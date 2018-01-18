@@ -13,12 +13,12 @@ var clrTrees = document.getElementById("ClearTrees");	// reset button from HTML
 let g = new Phaser.Game(603, 504, Phaser.AUTO, '', { preload: preload, create: create, update: update,  });
 
 
-g.physics.startSystem(Phaser.Physics.BOX2D);
+//g.physics.startSystem(Phaser.Physics.BOX2D);
 //g.fps = 30;
 //g.border = "2px black solid";
 
 function preload() {
-      game.load.image('sky_dust', 'ls-assets/bg_sky_dusky.png');
+      g.load.image('sky_dust', 'ls-assets/bg_sky_dusky.png');
     /*  game.load.image('sky_gloom', 'ls-assets/bg_sky_gloomy.png');
       game.load.image('sky_strata', 'ls-assets/bg_sky_strata.png');
       game.load.image('bedrock', 'ls-assets/bedrock_basic.png');
