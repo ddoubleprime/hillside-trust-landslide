@@ -18,22 +18,22 @@ g.physics.startSystem(Phaser.Physics.BOX2D);
 //g.border = "2px black solid";
 
 function preload() {
-      game.load.image('sky_dust', './ls-assets/bg_sky_dusky.png');
-      game.load.image('sky_gloom', './ls-assets/bg_sky_gloomy.png');
-      game.load.image('sky_strata', './ls-assets/bg_sky_strata.png');
-      game.load.image('bedrock', './ls-assets/bedrock_basic.png');
-      game.load.image('rain_dn', './ls-assets/button_rain_dn.png');
-      game.load.image('rain_ov', './ls-assets/button_rain_ov.png');
-      game.load.image('rain_up', './ls-assets/button_rain_up.png');
-      game.load.image('cloud1', './ls-assets/cloud1.png');
-      game.load.image('cloud2', './ls-assets/cloud2.png');
-      game.load.image('grass', './ls-assets/grass.png');
-      game.load.image('house', './ls-assets/house.png');
-      game.load.image('river', './ls-assets/river.png');
-      game.load.image('shrub', './ls-assets/shrub1.png');
-      game.load.image('soil', './ls-assets/soil_basic.png');
-      game.load.image('trees1', './ls-assets/trees1.png');
-      game.load.image('trees2', './ls-assets/trees2.png');
+      game.load.image('sky_dust', 'ls-assets/bg_sky_dusky.png');
+    /*  game.load.image('sky_gloom', 'ls-assets/bg_sky_gloomy.png');
+      game.load.image('sky_strata', 'ls-assets/bg_sky_strata.png');
+      game.load.image('bedrock', 'ls-assets/bedrock_basic.png');
+      game.load.image('rain_dn', 'ls-assets/button_rain_dn.png');
+      game.load.image('rain_ov', 'ls-assets/button_rain_ov.png');
+      game.load.image('rain_up', 'ls-assets/button_rain_up.png');
+      game.load.image('cloud1', 'ls-assets/cloud1.png');
+      game.load.image('cloud2', 'ls-assets/cloud2.png');
+      game.load.image('grass', 'ls-assets/grass.png');
+      game.load.image('house', 'ls-assets/house.png');
+      game.load.image('river', 'ls-assets/river.png');
+      game.load.image('shrub', 'ls-assets/shrub1.png');
+      game.load.image('soil', 'ls-assets/soil_basic.png');
+      game.load.image('trees1', 'ls-assets/trees1.png');
+      game.load.image('trees2', 'ls-assets/trees2.png');*/
 
 }
 
@@ -41,7 +41,7 @@ function create() {
   background = g.add.image(0, 0, 'sky_dust').anchor.set(0.5);
 
 
-  soil = g.sprite.add(0, 0, 'soil');
+/*  soil = g.sprite.add(0, 0, 'soil');
   cloud1 = g.sprite.add(0, 0, 'cloud1');
   cloud2 = g.sprite.add(0, 0, 'cloud2');
   bedrock = g.sprite.add(0, 0, 'bedrock');
@@ -49,18 +49,18 @@ function create() {
   trees1 = g.sprite.add(200, 0, 'trees1');
   trees2 = g.sprite.add(360, 0, 'trees2');
   shrub = g.sprite.add(0, 0, 'shrub');
-  river = g.sprite.add(0, 0, 'river');
+  river = g.sprite.add(0, 0, 'river');*/
 
 
 
 }
 
 function update() {
-yPosition();
+//yPosition();
 
 }
 
-function yPosition() {
+/*function yPosition() {
   river.x = background.width - 80;
   trees1.y = background.height - bedrock.height - soilH / 3 - 60;
   trees2.y = background.height - soil.height - soilH / 3 + 60;
@@ -69,7 +69,7 @@ function yPosition() {
   bedrock.y = background.height - bedrock.height + (2 * soilH / 3);
   soil.y = background.height - soil.height - soilH / 3 + 6;
   river.x = background.width - 80;
-}
+}*/
 
 /*function Deg2Rad(angle) {
 
