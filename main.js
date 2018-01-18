@@ -7,30 +7,11 @@ var clrTrees = document.getElementById("ClearTrees");	// reset button from HTML
 
 
 //An array that contains all the files you want to load
-let thingsToLoad = [
-  "ls-assets/bedrock_basic.png",
-  "ls-assets/bg_sky_dusky.png",
-  "ls-assets/bg_sky_gloomy.png",
-  "ls-assets/bg_sky_strata.png",
-  "ls-assets/button_rain_dn.png",
-  "ls-assets/button_rain_ov.png",
-  "ls-assets/button_rain_up.png",
-  "ls-assets/cloud1.png",
-  "ls-assets/cloud2.png",
-  "ls-assets/grass.png",
-  "ls-assets/house.png",
-  "ls-assets/river.png",
-  "ls-assets/shrub1.png",
-  "ls-assets/soil_basic.png",
-  "ls-assets/trees1.png",
-  "ls-assets/trees2.png",
-];
 
 //Create a new Hexi instance, and start it
 let g = new Phaser.Game(603, 504, Phaser.AUTO, '', { preload: preload, create: create, update: update,  });
 
-document.getElementsByTagName('canvas')[0].setAttribute('id', 'canvas');
-var canvas = document.getElementById("canvas");
+
 g.physics.startSystem(Phaser.Physics.BOX2D);
 //g.fps = 30;
 g.border = "2px black solid";
@@ -56,8 +37,9 @@ function preload() {
 }
 
 function create() {
-  background = g.sprite.add(0, 0, 'sky_dust');
-
+  game.stage.backgroundColor = "#4488AA";
+  //background = g.sprite.add(0, 0, 'sky_dust');
+  background = game.add.image(game.world.bottomX, game.world.bottomY, 'sky_dust').anchor.set(0.5);
   soil = g.sprite.add(0, 0, 'soil');
   cloud1 = g.sprite.add(0, 0, 'cloud1');
   cloud2 = g.sprite.add(0, 0, 'cloud2');
