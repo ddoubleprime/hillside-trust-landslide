@@ -19,21 +19,21 @@ let g = new Phaser.Game(603, 504, Phaser.AUTO, '', { preload: preload, create: c
 
 function preload() {
       g.load.image('sky_dust', 'ls-assets/bg_sky_dusky.png');
-    /*  game.load.image('sky_gloom', 'ls-assets/bg_sky_gloomy.png');
-      game.load.image('sky_strata', 'ls-assets/bg_sky_strata.png');
-      game.load.image('bedrock', 'ls-assets/bedrock_basic.png');
-      game.load.image('rain_dn', 'ls-assets/button_rain_dn.png');
-      game.load.image('rain_ov', 'ls-assets/button_rain_ov.png');
-      game.load.image('rain_up', 'ls-assets/button_rain_up.png');
-      game.load.image('cloud1', 'ls-assets/cloud1.png');
-      game.load.image('cloud2', 'ls-assets/cloud2.png');
-      game.load.image('grass', 'ls-assets/grass.png');
-      game.load.image('house', 'ls-assets/house.png');
-      game.load.image('river', 'ls-assets/river.png');
-      game.load.image('shrub', 'ls-assets/shrub1.png');
-      game.load.image('soil', 'ls-assets/soil_basic.png');
-      game.load.image('trees1', 'ls-assets/trees1.png');
-      game.load.image('trees2', 'ls-assets/trees2.png');*/
+      g.load.image('sky_gloom', 'ls-assets/bg_sky_gloomy.png');
+      g.load.image('sky_strata', 'ls-assets/bg_sky_strata.png');
+      g.load.image('bedrock', 'ls-assets/bedrock_basic.png');
+      g.load.image('rain_dn', 'ls-assets/button_rain_dn.png');
+      g.load.image('rain_ov', 'ls-assets/button_rain_ov.png');
+      g.load.image('rain_up', 'ls-assets/button_rain_up.png');
+      g.load.image('cloud1', 'ls-assets/cloud1.png');
+      g.load.image('cloud2', 'ls-assets/cloud2.png');
+      g.load.image('grass', 'ls-assets/grass.png');
+      g.load.image('house', 'ls-assets/house.png');
+      g.load.image('river', 'ls-assets/river.png');
+      g.load.image('shrub', 'ls-assets/shrub1.png');
+      g.load.image('soil', 'ls-assets/soil_basic.png');
+      g.load.image('trees1', 'ls-assets/trees1.png');
+      g.load.image('trees2', 'ls-assets/trees2.png');
 
 }
 
@@ -41,7 +41,7 @@ function create() {
   background = g.add.image(0, 0, 'sky_dust');
   //background.scale.setTo(2, 2);
 
-/*  soil = g.sprite.add(0, 0, 'soil');
+  soil = g.sprite.add(0, 0, 'soil');
   cloud1 = g.sprite.add(0, 0, 'cloud1');
   cloud2 = g.sprite.add(0, 0, 'cloud2');
   bedrock = g.sprite.add(0, 0, 'bedrock');
@@ -49,7 +49,7 @@ function create() {
   trees1 = g.sprite.add(200, 0, 'trees1');
   trees2 = g.sprite.add(360, 0, 'trees2');
   shrub = g.sprite.add(0, 0, 'shrub');
-  river = g.sprite.add(0, 0, 'river');*/
+  river = g.sprite.add(0, 0, 'river');
 
 
 
