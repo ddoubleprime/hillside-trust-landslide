@@ -41,15 +41,15 @@ function create() {
   background = g.add.image(0, 0, 'sky_dust');
   //background.scale.setTo(2, 2);
 
-  soil = g.sprite.add(0, 0, 'soil');
-  cloud1 = g.sprite.add(0, 0, 'cloud1');
-  cloud2 = g.sprite.add(0, 0, 'cloud2');
-  bedrock = g.sprite.add(0, 0, 'bedrock');
-  house = g.sprite.add(100, 0, 'house');
-  trees1 = g.sprite.add(200, 0, 'trees1');
-  trees2 = g.sprite.add(360, 0, 'trees2');
-  shrub = g.sprite.add(0, 0, 'shrub');
-  river = g.sprite.add(0, 0, 'river');
+  soil = g.add.sprite(0, 0, 'soil');
+  cloud1 = g.add.sprite(0, 0, 'cloud1');
+  cloud2 = g.add.sprite(0, 0, 'cloud2');
+  bedrock = g.add.sprite(0, 0, 'bedrock');
+  house = g.add.sprite(100, 0, 'house');
+  trees1 = g.add.sprite(200, 0, 'trees1');
+  trees2 = g.add.sprite(360, 0, 'trees2');
+  shrub = g.add.sprite(0, 0, 'shrub');
+  river = g.add.sprite(0, 0, 'river');
 
 
 
