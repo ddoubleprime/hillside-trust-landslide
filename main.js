@@ -39,7 +39,7 @@ function preload() {
 
 function create() {
   background = g.add.image(0, 0, 'sky_dust').anchor.set(0.5);
-
+  background.scale.set(2);
 
 /*  soil = g.sprite.add(0, 0, 'soil');
   cloud1 = g.sprite.add(0, 0, 'cloud1');
