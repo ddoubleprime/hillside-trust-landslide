@@ -220,5 +220,3 @@ console.log("step 1");
 	for (i=0;i<treeSegs.length;i++) { Carray[treeSegs[i]] *= 1.5; }; // increase cohesion 50% where there are trees
 	treesBool = true;
 };*/
-
-}
