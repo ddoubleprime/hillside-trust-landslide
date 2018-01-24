@@ -6,11 +6,13 @@ var clrTrees = document.getElementById("ClearTrees");	// reset button from HTML
 
 
 
+
+var groundVertices = [0,259,35,245,58,233,83,229,113,229,171,236,186,238,204,245,235,268,265,285,306,308,330,326,357,345,394,380,416,395,443,413,477,425,501,432,550,433,604,433];
 //An array that contains all the files you want to load
 
 
 //Create a new Hexi instance, and start it
-let g = new Phaser.Game(603, 504, Phaser.AUTO, '', { preload: preload, create: create, update: update,  });
+var g = new Phaser.Game(603, 504, Phaser.AUTO, '', { preload: preload, create: create, update: update, render: render, addShaders: addShaders });
 
 
 //g.physics.startSystem(Phaser.Physics.BOX2D);
@@ -34,23 +36,91 @@ function preload() {
       g.load.image('soil', 'ls-assets/soil_basic.png');
       g.load.image('trees1', 'ls-assets/trees1.png');
       g.load.image('trees2', 'ls-assets/trees2.png');
+      g.load.spritesheet('rain', 'ls-assets/rain.png', 17, 17);
+      g.load.image('water', '/ls-assets/ball.png');
+      g.load.script('filterX', 'js/phaser-ce-2.10.0/filters/BlurX.js');
+      g.load.script('filterY', 'js/phaser-ce-2.10.0/filters/BlurY.js');
+      g.load.script('threshold', 'js/phaser-ce-2.10.0/filters/Thershold.js');
 
 }
 
 function create() {
-  background = g.add.image(0, 0, 'sky_dust');
+
+  g.physics.startSystem(Phaser.Physics.BOX2D);
+  g.physics.box2d.restitution = 0.2;
+  g.physics.box2d.gravity.y = 250;
+
+  var groundBody = new Phaser.Physics.Box2D.Body(g, null, 0, 0, 0);
+	groundBody.setChain(groundVertices);
+  groundBody.static = true;
+  var background = g.add.image(0, 0, 'sky_dust');
   //background.scale.setTo(2, 2);
 
-  soil = g.add.sprite(0, 0, 'soil');
-  cloud1 = g.add.sprite(0, 0, 'cloud1');
-  cloud2 = g.add.sprite(0, 0, 'cloud2');
-  bedrock = g.add.sprite(0, 0, 'bedrock');
-  house = g.add.sprite(100, 0, 'house');
-  trees1 = g.add.sprite(200, 0, 'trees1');
-  trees2 = g.add.sprite(360, 0, 'trees2');
-  shrub = g.add.sprite(0, 0, 'shrub');
-  river = g.add.sprite(0, 0, 'river');
+  var soil = g.add.sprite(0, 0, 'soil');
+  var cloud1 = g.add.sprite(0, 0, 'cloud1');
+  var cloud2 = g.add.sprite(0, 0, 'cloud2');
+  var bedrock = g.add.sprite(0, 230, 'bedrock');
+  var house = g.add.sprite(100, 0, 'house');
+  var trees1 = g.add.sprite(200, 0, 'trees1');
+  var trees2 = g.add.sprite(360, 0, 'trees2');
+  var shrub = g.add.sprite(0, 0, 'shrub');
+  var river = g.add.sprite(0, 0, 'river');
+  //var water = g.add.sprite(0, 0, 'water');
 
+
+
+  fluid = g.add.group();
+      for (var i = 0; i < 400; i++) {
+          var randomX = g.rnd.between(0, g.width);
+          var randomY = g.rnd.between(0, g.height);
+
+
+          var droplet = g.add.sprite(randomX, randomY, 'water');
+          //var droplet = new Phaser.Physics.Box2D.Body(g, 'water', randomX, randomY);
+          droplet.scale.x = 0.4;
+          droplet.scale.y = 0.4;
+
+
+          g.physics.box2d.enable(droplet);
+          droplet.body.setCircle(droplet.width * 0.3);
+          // Enable physics for the droplet
+          //g.physics.p2.enable(droplet);
+          droplet.collideWorldBounds = true;
+
+          // Add a force that slows down the droplet over time
+          droplet.damping = 0.3;
+
+          // This makes the collision body smaller so that the droplets can get
+          // really up close and goopy
+
+
+          // Add the droplet to the fluid group
+          fluid.add(droplet);
+      }
+
+      // Add WebGL shaders to "liquify" the droplets
+      addShaders();
+
+
+
+
+  var emitter = g.add.emitter(g.world.centerX, 0, 400);
+
+  	emitter.width = g.world.width;
+  	// emitter.angle = 30; // uncomment to set an angle for the rain.
+
+  	emitter.makeParticles('rain');
+
+  	emitter.minParticleScale = 0.1;
+  	emitter.maxParticleScale = 0.5;
+
+  	emitter.setYSpeed(300, 500);
+  	emitter.setXSpeed(-5, 5);
+
+  	emitter.minRotation = 0;
+  	emitter.maxRotation = 0;
+
+  	emitter.start(false, 1600, 5, 0);
 
 
 }
@@ -60,6 +130,21 @@ function update() {
 
 }
 
+function render() {
+
+	//g.debug.box2dWorld();
+
+}
+
+function addShaders(){
+    var blurX = g.add.filter('BlurX');
+    var blurY = g.add.filter('BlurY');
+    blurX.blur = 32;
+    blurY.blur = 32;
+    var threshShader = g.add.filter('Threshold');
+    fluid.filters = [ blurX, blurY, threshShader];
+    fluid.filterArea = g.camera.view;
+};
 /*function yPosition() {
   river.x = background.width - 80;
   trees1.y = background.height - bedrock.height - soilH / 3 - 60;
