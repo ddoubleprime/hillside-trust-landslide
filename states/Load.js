@@ -17,9 +17,12 @@ preload: function(){
   g.load.image('shovel', 'ls-assets/shovel.png');
   g.load.image('soil', 'ls-assets/soil_basic.png');
   g.load.image('trees1', 'ls-assets/trees1.png');
+  g.load.image('quest', 'ls-assets/question.png');
+
   g.load.image('trees2', 'ls-assets/trees2.png');
   g.load.spritesheet('rain', 'ls-assets/rain.png', 17, 17);
   g.load.image('water', '/ls-assets/ball.png');
+  g.load.image('info', 'ls-assets/glass.png');
   g.load.script('filterX', 'js/phaser-ce-2.10.0/filters/BlurX.js');
   g.load.script('filterY', 'js/phaser-ce-2.10.0/filters/BlurY.js');
   g.load.script('threshold', 'js/phaser-ce-2.10.0/filters/Threshold.js');
