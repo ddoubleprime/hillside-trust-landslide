@@ -80,6 +80,8 @@ var reddot;
 var bluedot;
 var dotGroup;
 var showdotmode;
+var rain_t;
+var fail_surf;
 
 
 this.background = g.add.image(0, 0, 'sky_dust');
@@ -96,6 +98,7 @@ this.grav=9.81;
   this.toppoints=[[604,383], [550,383], [501,382], [477,375], [443,363], [416,345],
   [394,330], [357,295], [330,276], [306,258], [265,235], [235,218], [204,195],
    [186,188], [171,186], [113,179], [83,179], [58,183], [35,195], [0,209]];
+
 this.xPoints = [];
 this.zPoints = [];
 this.Xmax=this.toppoints[0][0]-1;
@@ -107,7 +110,7 @@ this.objects = g.add.group();
 this.fluid = g.add.group();
 this.dotGroup = g.add.group();
 
-
+this.fail_surf=[];
 this.showdotmode=false;
 this.upKey = g.input.keyboard.addKey(Phaser.Keyboard.UP);
 this.downKey = g.input.keyboard.addKey(Phaser.Keyboard.DOWN);
@@ -147,6 +150,7 @@ this.t = 0;          // initial model time, wks
 this.tmax = 10 * 52; // maximum model run time, wks
 
 this.dx = 1;
+this.rain_t = 0;
 //this.x = -10:dx:10;
 //this.Hr = 2*ones(size(x)) + randn(size(x))*0.1;
 
@@ -186,9 +190,10 @@ g.input.onTap.add(this.onTap, this);
  this.infobtn.onInputOut.add(this.out, this);
  this.showdots.onInputOver.add(this.isover, this);
  this.showdots.onInputOut.add(this.out, this);
- this.raining=true;
+ this.raining=false;
 this.pass = false;
 this.ti = g.time.create();
+this.ti.loop(500, this.rainingMath, this);
 //this.ti.loop(50, this.waterdrops, this);
 this.ti.start();
  this.addShaders();
@@ -237,6 +242,13 @@ pointsInArea: function (numPts) {
 randomPoint: function ( min, max) {
   return g.rnd.between(min, max);
 },
+saturateSoil: function(){
+
+},
+drainSoil: function () {
+
+},
+
 randomZPoint: function (xpoint ) {
   let dot = [];
   let topR = this.checkXPosition(xpoint, this.toppoints, 1);
@@ -245,19 +257,19 @@ randomZPoint: function (xpoint ) {
   let TopXY = this.findPosition(topR, xpoint, this.toppoints, 1);
   let BotXY = this.findPosition(botR, xpoint, this.bottompoints, -1);
 
-  let slope =  this.findSlope(botR, this.bottompoints, -1);
+  let slope =  this.findSlope(topR, this.toppoints, 1);
   let zp = this.randomPoint(TopXY[1], BotXY[1]);
-  let width = this.bottompoints[botR][1]-zp;
+  let width = zp - this.toppoints[topR][1];
   dot["xPoint"] = xpoint;
   dot["yPoint"]= zp;
-  dot["zPoint"] = width;
+  //dot["zPoint"] = width;
 
   dot["theta"] = this.rad2Deg(Math.atan(slope));
   dot["m"]=0;
   dot["satDepth"]=0;
-  dot["sH"]=BotXY[1]-TopXY[1];
+  dot["sH"]=width;
   dot["Cohesion"]=this.Coh;
-  dot["FS"]=this.FScalc(dot);
+  dot["FS"]=Math.abs(this.FScalc(dot));
 
 
   this.dots.push(dot);
@@ -295,7 +307,31 @@ rad2Deg: function(val){
 },
 
 rainingMath: function () {
-  this.pointsInArea(this.numpts);
+  this.rain_t=this.rain_t+1;
+  //console.log(this.rain_t);
+  this.fail_surf=[];
+  let mn
+  for(let i =0; i < this.dots.length; i++){
+
+    this.dots[i]["satDepth"] = this.dots[i]["satDepth"] + this.k * Math.sqrt(this.rain_t);
+
+    //console.log(this.dots[i]["satDepth"] );
+    if(this.dots[i]["sH"] < this.dots[i]["satDepth"] ){
+      //console.log("yes");
+      mn=this.dots[i]["m"] + this.sat_rate;
+
+      this.dots[i]["m"] = Math.min(1, Math.max(0, mn));
+    }
+    mn = this.dots[i]["m"] - (this.drain_rate * this.dots[i]["m"]);
+    this.dots[i]["m"] = Math.min(1, Math.max(0, mn));
+    this.dots[i]["FS"] = Math.abs(this.FScalc(this.dots[i]));
+
+    if(this.dots[i]["FS"] <= 1){
+      this.fail_surf.push(i);
+    }
+
+  }
+
 
 },
 
@@ -391,7 +427,7 @@ let area = ((a+b)/2)h;
 adddirt: function(x) {
 
 //console.log(this.toppoints);
-  let r = this.checkXPosition(x, this.toppoints);
+  let r = this.checkXPosition(x, this.toppoints, 1);
   //var r = this.checkXPosition(x, this.toppoints);
 
 
@@ -432,7 +468,7 @@ showdotsmode: function () {
   }
 },
 removedirt: function(x) {
-  var r = this.checkXPosition(x, this.toppoints);
+  var r = this.checkXPosition(x, this.toppoints, 1);
       if (this.toppoints[r+1][0] != 0){
 
         this.toppoints[r+2][1]=this.toppoints[r+2][1]+1;
@@ -584,12 +620,12 @@ rainmode: function () {
   }
 
   if(this.raining){
-    //this.ti.resume();
+    this.pointsInArea(this.numpts)
+    this.ti.resume();
     this.emitter.on= true;
-    this.rainingMath();
   }
   else{
-    //this.ti.pause();
+    this.ti.pause();
     this.emitter.on= false;
   }
 },
