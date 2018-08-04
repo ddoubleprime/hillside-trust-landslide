@@ -114,8 +114,8 @@ playState.prototype = {
         
         house.body.setRectangle(40,55);
         //house.body.dynamic = true;
-        house.collideWorldBounds = false;
-        house.checkWorldBounds = true;
+        house.body.collideWorldBounds = false;
+        house.body.checkWorldBounds = true;
         house.outOfBoundsKill = true;
         house.fixedRotation = false; 
         house.bullet = false; house.linearDamping = 1; house.angularDamping = 0.2; house.gravityScale = 0;
@@ -126,9 +126,7 @@ playState.prototype = {
         house.mass = 2.6; 
         
         //house.body.setBodyContactCallback(soil_graphic, this.contactCallback, this);
-        console.log(soil_graphic)
-        
-        
+        console.log(soil_graphic)    
         
         /* TIMING */
         
@@ -159,6 +157,11 @@ playState.prototype = {
         
         }
         timeDisplay.setText('Day: ' + Math.round(nowTime*10)/10);
+        
+        /* Routine here for scooping / dumping 
+            Uses something like a gaussian shape subtracted across the range of x-indices selected. These defined by a shovel_width parameter in world grid units.
+        */
+        
 
     },
 
@@ -279,9 +282,9 @@ playState.prototype = {
     render: function () {
 
         g.debug.box2dWorld();
-                // Default color is white
+        // Default color is white
         g.debug.body(soil_graphic);
-       //g.debug.body(house,'rgb(0,0,0)');
+        //g.debug.body(house,'rgb(0,0,0)');
         // Make falling block more red depending on vertical speed  
         var red = house.body.velocity.y * 0.5;
         red = Math.min(Math.max(red, 0), 255);
