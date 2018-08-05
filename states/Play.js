@@ -24,7 +24,8 @@ var playState = function(game) {
 };
 
 var shovelMode = true;
-
+var changeFlag = false;
+    
 /* CONSTRUCTORS */
 var Shovel = function(xin,yin,win,din){
         this.x=xin;
@@ -80,7 +81,8 @@ playState.prototype = {
         bedrock_surface = this.sinFunc(x_axis,surf_amp,surf_wavelength,surf_shift);
         this.rebaseFunc(bedrock_surface);
         // convert to canvas coordinates
-        soil_surface_canvas = this.arrayScale(bedrock_surface,dy_canvas,worldH+Hr*dy_canvas);
+        soil_surface = this.arrayScale(bedrock_surface,1,Hr);
+        soil_surface_canvas = this.arrayScale(soil_surface,dy_canvas,worldH);
         y_base_canvas = this.arrayScale(y_base,dy_canvas,worldH);
         
         // make canvas-unit coordinate pairs for drawing
@@ -98,26 +100,25 @@ playState.prototype = {
 
                 
         
-        house = g.add.sprite(100,100,'house');
+        house = g.add.sprite(worldW/4,100,'house');
         
         /* PHYSICS */
         
         // assign physics bodies and properties        
         g.physics.box2d.enable(soil_graphic);
+        g.physics.box2d.enable(bedrock_graphic);
         g.physics.box2d.enable(house);
         
         
         var bodypoly = this.boxPolygonArray( x_axis_canvas,soil_surface_canvas );
-        console.log(bodypoly);
         
         soil_graphic.body.setChain(bodypoly);
         soil_graphic.body.static = true;
         
-        bodypoly = this.boxPolygonArray( x_axis_canvas,soil_surface_canvas );
-        console.log(bodypoly);
+        bodypoly = this.boxPolygonArray( x_axis_canvas.concat([0]),bedrock_surface_canvas.concat([worldH]) );
         
-        soil_graphic.body.setChain(bodypoly);
-        soil_graphic.body.static = true;
+        bedrock_graphic.body.setPolygon(bodypoly);
+        bedrock_graphic.body.static = true;
         
         
         
@@ -144,26 +145,20 @@ playState.prototype = {
     },
 
 
-/* UPDATER */
-
+    /* UPDATER */
+    
     update: function(){
         nowTime = ti.ms/timeRate;  // simulation world time
         
         // get new thickness value
         if (Hr != Number(HrField.value)) {
-            Hr = Number(HrField.value);
-        
+            var HrNew = Number(HrField.value);
+            soil_surface = this.arrayScale(soil_surface,1,HrNew-Hr);
+            
+            Hr = HrNew;
             // update soil thickness and redraw
-            soil_surface_canvas = this.arrayScale(bedrock_surface,dy_canvas,worldH+Hr*dy_canvas);
-            this.drawgraphic(soil_graphic,bot_pts,this.two1dto2d(x_axis_canvas,soil_surface_canvas),soilclr);
-            
-            g.world.bringToTop(bedrock_graphic);
-            
-            var bodypoly = this.boxPolygonArray( x_axis_canvas,soil_surface_canvas );
-                
-            soil_graphic.body.setChain(bodypoly);
-            soil_graphic.body.static = true;
-        
+            changeFlag = true;
+    
         }
             
         timeDisplay.setText('Day: ' + Math.round(nowTime*10)/10);
@@ -177,25 +172,37 @@ playState.prototype = {
             // get mouse position
             
             // really only the x-position matters. but we might wish to limit the tool to operating only within some smaller distance of the land surface.
-            var adding_shovel = new Shovel(worldW/2,0,2,2); // (x,y,w,d)
-                        console.log(adding_shovel);
-            var digging_shovel = new Shovel(worldW/4,0,2,-2)
-                        console.log(digging_shovel);
+            var adding_shovel = new Shovel(worldW/2,0,2,-2); // (x,y,w,d)
+            var digging_shovel = new Shovel(worldW/4,0,5,40);
+            soil_surface = this.applyShovel(adding_shovel,x_axis,soil_surface);
+            soil_surface = this.applyShovel(digging_shovel,x_axis,soil_surface);
 
-                    shovelMode = false;
 
-            this.applyShovel(adding_shovel,x_axis,soil_surface);
-            
-                
-                
-            
             // find all x grid points within a gaussian with standard dev=shovel_width
             // points outside 2s are not altered
             
             
+            shovelMode = false;
+            changeFlag = true;
             
-        }
+        } // shovelmode
+        
+        
+         if (changeFlag == true) {
+             
+            soil_surface_canvas = this.arrayScale(soil_surface,dy_canvas,worldH);
+            this.drawgraphic(soil_graphic,bot_pts,this.two1dto2d(x_axis_canvas,soil_surface_canvas),soilclr);
+
+            g.world.bringToTop(bedrock_graphic);
+
+            var bodypoly = this.boxPolygonArray( x_axis_canvas,soil_surface_canvas );
+
+            soil_graphic.body.setChain(bodypoly);
+            soil_graphic.body.static = true;
+
+            changeFlag = false;
             
+         }
 
     },
 
@@ -309,20 +316,24 @@ playState.prototype = {
     applyShovel: function(shvl,xa,y) {
         
         // define the gaussian
-            sigma = shvl.width;
+        var sigma = shvl.width; // input as world grid units
+        var mu = shvl.x / dx_canvas; // shvl.x is here in canvas units. check this if using world units.
             // operates over the +/- 2-sigma region of the grid
-            // so find indices between shvl.x-2*sigma and shvl.x+2*sigma
-            // 
-        var x_axis_opt = []
-        for (i=0;i<xa.length;i++) {
-            x_axis_opt.push(xa.indexOf(function(num){num >= shvl.x-2*sigma && num =< shvl.x+2*sigma;}));
+        var hole = Array(xa.length);
+        var ynew = Array(xa.length);
+        
+        for (var i=0;i<xa.length;i++) {
+            
+            hole[i] = shvl.depth/(sigma * Math.sqrt(2*Math.PI)) *       Math.exp(-0.5*Math.pow((xa[i]-mu)/sigma,2) ) ;
+                         
+            if (xa[i] >= mu-3*sigma && xa[i] <= mu+3*sigma) {
+                ynew[i] = (y[i]-hole[i]);
+            }
+            else {ynew[i] = y[i];}
         }
         
-        console.log(x_axis_op);
-        for (i=lidx;i<=ridx;i++) {
-            gau = shvl.depth/(sigma * Math.sqrt(2*Math.PI));
-            console.log(gau);
-        }
+        return ynew;
+        
     
     },
     
