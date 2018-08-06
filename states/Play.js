@@ -18,21 +18,16 @@ var timeKeeper, nowTime, worldTime = 0;
 var timeDisplay;
         
 var physBoxTest;
-var box2d
+var box2d;
 var playState = function(game) {
 
 };
 
-var shovelMode = true;
+var shovelMode = false;
+var shovelButton;
 var changeFlag = false;
-    
-/* CONSTRUCTORS */
-var Shovel = function(xin,yin,win,din){
-        this.x=xin;
-        this.y= yin;
-        this.width= win;
-        this.depth= din;
-    };
+var adding_shovel
+var digging_shovel
 
 playState.prototype = {
 
@@ -44,7 +39,17 @@ playState.prototype = {
         soil_graphic = g.add.graphics(0, 0);
         bedrock_graphic = g.add.graphics(0, 0);
         timeDisplay = g.add.text(5, 5, [], { fill: '#001122', font: '14pt Arial' });
-                
+        
+                // Set up handlers for mouse events
+        g.input.onDown.add(this.mouseDragStart, this);
+        g.input.addMoveCallback(this.mouseDragMove, this);
+        g.input.onUp.add(this.mouseDragEnd, this);
+    
+        shovelButton = g.add.button(20, 20, 'shovel', this.startShovelMode, this);
+        shovelButton.scale.setTo(0.025, 0.025);
+        adding_shovel = new this.Shovel(2,-2); // (w,d)
+        digging_shovel = new this.Shovel(2,2);
+        
         x_axis = this.vector(0,100,dx); // grid units
         y_base = Array(x_axis.length); // grid units
         y_base.fill(0);
@@ -128,15 +133,14 @@ playState.prototype = {
         house.body.checkWorldBounds = true;
         house.outOfBoundsKill = true;
         house.fixedRotation = false; 
-        house.bullet = false; house.linearDamping = 0; house.angularDamping = 0.2; house.gravityScale = 10;
+        house.bullet = false; house.linearDamping = 0; house.body.angularDamping = 1; house.gravityScale = 1;
         // These will affect all fixtures on the body 
         house.sensor = true;
-        house.friction = 0.9;
-        house.restitution = 0.8;
-        house.mass = 2.6; 
+        house.body.friction = 0.9;
+        house.body.restitution = 0;
+        house.body.mass = 1; 
         
         //house.body.setBodyContactCallback(soil_graphic, this.contactCallback, this);
-        console.log(soil_graphic)    
         
         /* TIMING */
         
@@ -149,7 +153,8 @@ playState.prototype = {
     
     update: function(){
         nowTime = ti.ms/timeRate;  // simulation world time
-        
+        timeDisplay.setText('Day: ' + Math.round(nowTime*10)/10);
+
         // get new thickness value
         if (Hr != Number(HrField.value)) {
             var HrNew = Number(HrField.value);
@@ -161,30 +166,30 @@ playState.prototype = {
     
         }
             
-        timeDisplay.setText('Day: ' + Math.round(nowTime*10)/10);
         
         /* Routine here for scooping / dumping 
             Uses something like a gaussian shape subtracted across the range of x-indices selected. These defined by a shovel_width parameter in world grid units.
         */
         if (shovelMode) {
-            // change cursor
             
-            // get mouse position
+
+            ti.pause()
+            
+            // change cursor
+            g.canvas.style.cursor = "crosshair"
+            //soil_surface = this.applyShovel(adding_shovel,g.input.x,x_axis,soil_surface);
+
+
+            // wait for click and then get mouse position
+            g.input.onDown.addOnce(this.useShovel, this);
             
             // really only the x-position matters. but we might wish to limit the tool to operating only within some smaller distance of the land surface.
-            var adding_shovel = new Shovel(worldW/2,0,2,-2); // (x,y,w,d)
-            var digging_shovel = new Shovel(worldW/4,0,5,40);
-            soil_surface = this.applyShovel(adding_shovel,x_axis,soil_surface);
-            soil_surface = this.applyShovel(digging_shovel,x_axis,soil_surface);
 
-
-            // find all x grid points within a gaussian with standard dev=shovel_width
-            // points outside 2s are not altered
-            
             
             shovelMode = false;
             changeFlag = true;
-            
+            ti.resume()
+
         } // shovelmode
         
         
@@ -263,8 +268,8 @@ playState.prototype = {
     rebaseFunc: function(arr) {
         // updates an array by subtracting the lowest value from each element, 
         // such that the lowest value is now zero
-        var base_val = Math.min.apply(Math,arr);
-        
+        var base_val = Math.min.apply(Math,bedrock_surface);
+
         for (var i=0;i<arr.length;i++) {
             arr[i] = arr[i]-base_val;
         }
@@ -313,12 +318,12 @@ playState.prototype = {
         //g.world.bringToTop(this.bedrock);
     },
 
-    applyShovel: function(shvl,xa,y) {
+    applyShovel: function(shvl,x,xa,ysurf) {
         
         // define the gaussian
         var sigma = shvl.width; // input as world grid units
-        var mu = shvl.x / dx_canvas; // shvl.x is here in canvas units. check this if using world units.
-            // operates over the +/- 2-sigma region of the grid
+        var mu = x / dx_canvas; // shvl.x is here in canvas units. check this if using world units.
+            // operates over the +/- 3-sigma region of the grid
         var hole = Array(xa.length);
         var ynew = Array(xa.length);
         
@@ -327,9 +332,9 @@ playState.prototype = {
             hole[i] = shvl.depth/(sigma * Math.sqrt(2*Math.PI)) *       Math.exp(-0.5*Math.pow((xa[i]-mu)/sigma,2) ) ;
                          
             if (xa[i] >= mu-3*sigma && xa[i] <= mu+3*sigma) {
-                ynew[i] = (y[i]-hole[i]);
+                ynew[i] = (ysurf[i]-hole[i]);
             }
-            else {ynew[i] = y[i];}
+            else {ynew[i] = ysurf[i];}
         }
         
         return ynew;
@@ -337,6 +342,15 @@ playState.prototype = {
     
     },
     
+/* CALLBACKS and INPUT EVENTS */    
+    
+    startShovelMode: function (){
+        shovelMode = true;
+    },
+
+    useShovel: function(){
+        soil_surface = this.applyShovel(digging_shovel,g.input.mousePointer.x,x_axis,soil_surface);
+    },
     
     contactCallback: function (body1, body2, fixture1, fixture2, begin, contact) {
         contact.SetEnabled(true);
@@ -344,6 +358,31 @@ playState.prototype = {
         body2.velocity.y = 0;
     },
 
+
+
+    mouseDragStart: function() {
+
+        g.physics.box2d.mouseDragStart(g.input.mousePointer);
+
+    },
+
+    mouseDragMove: function () {
+
+        g.physics.box2d.mouseDragMove(g.input.mousePointer);
+
+    },
+
+    mouseDragEnd: function () {
+
+        g.physics.box2d.mouseDragEnd();
+
+    },
+/* CONSTRUCTORS */
+    Shovel: function(win,din){
+        this.width= win;
+        this.depth= din;
+    },
+    
 
     render: function () {
 
