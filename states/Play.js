@@ -9,7 +9,7 @@ var worldW = 603, worldH = 504;
 var y_base, soil_surface, bedrock_surface;
 var surf_amp=10,surf_wavelength=25,surf_shift=0;
 var dx_canvas, dy_canvas, x_axis_canvas, soil_surface_canvas;
-
+var soil_thickness;
 var HrField = document.getElementById("Hreg");	// pull reg height from HTML slider
 var Hr = Number(HrField.value);
 
@@ -19,17 +19,19 @@ var timeDisplay;
         
 var physBoxTest;
 var box2d;
-var playState = function(game) {
-
-};
 
 var shovelMode = false;
 var dumpMode = false;
 var shovelButton, dumpButton;
 var changeFlag = false;
-var adding_shovel, digging_shovel, active_shovel;
+var adding_shovel, digging_shovel, landslide_shovel, active_shovel;
 
 var esckey;
+var slide_body;
+
+var playState = function(game) {
+
+};
 
 
 playState.prototype = {
@@ -41,6 +43,7 @@ playState.prototype = {
         //bedrock = g.add.sprite(0, 230, 'bedrock');
         soil_graphic = g.add.graphics(0, 0);
         bedrock_graphic = g.add.graphics(0, 0);
+        slide_body = g.add.graphics(0, 0);
         timeDisplay = g.add.text(5, 5, [], { fill: '#001122', font: '14pt Arial' });
         
                 // Set up handlers for mouse events
@@ -49,6 +52,7 @@ playState.prototype = {
         g.input.addMoveCallback(this.mouseDragMove, this);
         g.input.onUp.add(this.mouseDragEnd, this);
         esckey = g.input.keyboard.addKey(Phaser.Keyboard.ESC);
+        lkey = g.input.keyboard.addKey(Phaser.Keyboard.L)
         shovelButton = g.add.button(worldW-150, 20, 'shovel', this.toggleShovelMode, this);
         shovelButton.scale.setTo(0.025, 0.025);
         dumpButton = g.add.button(worldW-80, 20, 'dumptruck', this.toggleDumpMode, this);
@@ -56,6 +60,7 @@ playState.prototype = {
         
         adding_shovel = new this.Shovel(2,-2); // (w,d)
         digging_shovel = new this.Shovel(2,2);
+        landslide_shovel = new this.Shovel(5,8)
         
         x_axis = this.vector(0,100,dx); // grid units
         y_base = Array(x_axis.length); // grid units
@@ -87,7 +92,10 @@ playState.prototype = {
         //g.debug.box2dWorld();
         
         console.log(g.physics.box2d);
-
+        
+        lkey.onDown.addOnce(this.doLandslide, this)
+        
+        /* CREATE: SURFACE ARRAYS */
         
         // prepare the land surface array
         bedrock_surface = this.sinFunc(x_axis,surf_amp,surf_wavelength,surf_shift);
@@ -110,30 +118,31 @@ playState.prototype = {
 
         this.drawgraphic(bedrock_graphic,bot_pts,top_pts,rockclr)
 
+        // derive thickness array
+        soil_thickness = this.arrayAdd(soil_surface,bedrock_surface,-1);
+        
+        
                 
+        /* CREATE: PHYSICS */
         
         house = g.add.sprite(worldW/4,100,'house');
-        
-        /* PHYSICS */
-        
+
         // assign physics bodies and properties        
         g.physics.box2d.enable(soil_graphic);
         g.physics.box2d.enable(bedrock_graphic);
         g.physics.box2d.enable(house);
-        
-        
+                
         var bodypoly = this.boxPolygonArray( x_axis_canvas,soil_surface_canvas );
         
         soil_graphic.body.setChain(bodypoly);
         soil_graphic.body.static = true;
         
-        bodypoly = this.boxPolygonArray( x_axis_canvas.concat([0]),bedrock_surface_canvas.concat([worldH]) );
+        bodypoly = this.boxPolygonArray( x_axis_canvas.concat([0]), bedrock_surface_canvas.concat([worldH]) );
         
         bedrock_graphic.body.setPolygon(bodypoly);
         bedrock_graphic.body.static = true;
         
-        
-        
+        // house properties for reference; can use defaults for most objects
         house.body.setRectangle(40,55);
         //house.body.dynamic = true;
         house.body.collideWorldBounds = false;
@@ -149,8 +158,7 @@ playState.prototype = {
         
         //house.body.setBodyContactCallback(soil_graphic, this.contactCallback, this);
         
-        /* TIMING */
-        
+        /* CREATE: TIMING */
         ti.start();
             
     },
@@ -179,8 +187,7 @@ playState.prototype = {
         */
         if (shovelMode) {
             
-            active_shovel = digging_shovel;     // algorithm to decide which is active
-            
+            active_shovel = digging_shovel; 
             // glowing button
             shovelButton.tint = 0xFF9966;
             // change cursor
@@ -191,12 +198,12 @@ playState.prototype = {
         
         if (dumpMode) {
                 
-            active_shovel = adding_shovel;     // algorithm to decide which is active
+            active_shovel = adding_shovel;    
             
             // glowing button
             dumpButton.tint = 0xFF9966;
             // change cursor
-            g.canvas.style.cursor = "crosshair";
+            g.canvas.style.cursor = "cell";
             g.input.onDown.addOnce(this.digActiveShovel, this);
             
         } // shovelmode
@@ -204,17 +211,7 @@ playState.prototype = {
         
          if (changeFlag == true) {
              
-            soil_surface_canvas = this.arrayScale(soil_surface,dy_canvas,worldH);
-             this.drawgraphic(soil_graphic,bot_pts,this.two1dto2d(x_axis_canvas,soil_surface_canvas),soilclr);
-
-            g.world.bringToTop(bedrock_graphic);
-
-            var bodypoly = this.boxPolygonArray( x_axis_canvas,soil_surface_canvas );
-
-            soil_graphic.body.setChain(bodypoly);
-            soil_graphic.body.static = true;
-
-            changeFlag = false;
+             this.updateLandscapeGraphics();
             
          }   // changeFlag
 
@@ -261,6 +258,22 @@ playState.prototype = {
         return xa;
         
     },
+    
+    arrayAdd: function(arr1,arr2,sign){        
+        // adds arrays of the same length
+        // elementwise, or subtracts array2 from array1
+        // and returns result as a new array  
+        if (arr1.length == arr2.length){
+            
+            var xa = Array(arr1.length);
+
+            for (var i=0;i<arr1.length;i++) {
+                xa[i] = arr2[i]*sign + arr1[i];
+            }
+
+        return xa; }
+        else {console.log('arrayAdd: Arrays not of the same length')}
+    },   
     
     sinFunc: function(arr,amp,pd,phase) {
         // returns an array with a shifted sinusoid
@@ -351,9 +364,75 @@ playState.prototype = {
     
     },
     
+    doLandslide: function() {
+        
+        // use the landslide_shovel to get the "failure plane"
+        
+        var post_ls_surface = this.applyShovel(landslide_shovel,worldW/2,x_axis,soil_surface);
+        // update the soil surface using these points (as normal)
+        // use old and new in the changed section as top and bottom for a new graphics body
+        slide_thickness = this.arrayAdd(soil_surface,post_ls_surface,-1);
+        
+                        console.log(slide_thickness)
+
+        slide_thickness = this.arrayThresh(slide_thickness,0.1);
+        
+        // probably want to round off the long tails of the gaussians too
+        // so centered on the max difference and with a linear taper to radius r
+        
+        soil_surface = post_ls_surface;
+                console.log(slide_thickness)
+
+        changeFlag = true;
+        
+        this.drawSlideBody();
+        
+        console.log('fired!')
+    },
+    
+    drawSlideBody: function () {
+        
+        
+        
+    },
+    
+    arrayThresh: function (arr,thrsh){
+            
+        var xa = Array(arr.length);
+
+        for (var i=0;i<arr.length;i++) {
+            if (arr[i] < thrsh) {
+                xa[i] = 0;
+            } else {
+                xa[i] = arr[i];
+            }
+        }
+
+        return xa;
+    
+    },
+        
+    updateLandscapeGraphics: function() {
+        // derive thickness array
+        soil_thickness = this.arrayAdd(soil_surface,bedrock_surface,-1);
+        
+        soil_surface_canvas = this.arrayScale(soil_surface,dy_canvas,worldH);
+        this.drawgraphic(soil_graphic,bot_pts,this.two1dto2d(x_axis_canvas,soil_surface_canvas),soilclr);
+
+        g.world.bringToTop(bedrock_graphic);
+
+        var bodypoly = this.boxPolygonArray( x_axis_canvas,soil_surface_canvas );
+
+        soil_graphic.body.setChain(bodypoly);
+        soil_graphic.body.static = true;
+
+        changeFlag = false;
+    },
+    
+    
 /* CALLBACKS and INPUT EVENTS */    
     
-    toggleShovelMode: function (){
+    toggleShovelMode: function () {
         
         if (shovelMode == true) {
             shovelMode = false;
@@ -361,19 +440,18 @@ playState.prototype = {
             g.canvas.style.cursor = "default"
             // destroy shovel listeners
             esckey.onDown.remove(this.toggleShovelMode, this);
-            g.input.onDown.remove(this.digActiveShovel, this);
+            g.input.onDown.remove(this.digActiveShovel, this);            
         } else {
             // one mode at a time. this approach will become unwieldy with more than a few buttons
             if (dumpMode) {
                 this.toggleDumpMode();
-            }
-            
+            }            
             shovelMode = true;
             esckey.onDown.addOnce(this.toggleShovelMode, this);
         }
     },
     
-    toggleDumpMode: function (){
+    toggleDumpMode: function () {
 
         if (dumpMode == true) {
             dumpMode = false;
@@ -382,36 +460,25 @@ playState.prototype = {
             // destroy shovel listeners
             esckey.onDown.remove(this.toggleDumpMode, this);
             g.input.onDown.remove(this.digActiveShovel, this);
-        } else {
-            
+        } else {            
             // one mode at a time. this approach will become unwieldy with more than a few buttons
             if (shovelMode) {
                 this.toggleShovelMode();
             }
-
             dumpMode = true;
             esckey.onDown.addOnce(this.toggleDumpMode, this);
         }
     },
     
-    digActiveShovel: function(){
+    digActiveShovel: function () {
         if (!shovelButton.input.pointerOver() && !dumpButton.input.pointerOver()) {
 
             soil_surface = this.applyShovel(active_shovel,g.input.x,x_axis,soil_surface);
             g.canvas.style.cursor = "default"
-            //shovelMode = false;
             changeFlag = true;
             
         }
     },
-    
-    contactCallback: function (body1, body2, fixture1, fixture2, begin, contact) {
-        contact.SetEnabled(true);
-        contact.SetTangentSpeed(2);
-        body2.velocity.y = 0;
-    },
-
-
 
     mouseDragStart: function() {
 
@@ -430,7 +497,9 @@ playState.prototype = {
         g.physics.box2d.mouseDragEnd();
 
     },
+    
 /* CONSTRUCTORS */
+    
     Shovel: function(win,din){
         this.width= win;
         this.depth= din;
@@ -439,7 +508,7 @@ playState.prototype = {
 
     render: function () {
 
-/*        g.debug.box2dWorld();
+       g.debug.box2dWorld();
         // Default color is white
         g.debug.body(soil_graphic);
         //g.debug.body(house,'rgb(0,0,0)');
@@ -449,7 +518,7 @@ playState.prototype = {
         var red = Math.floor(red);
         var blue = 255 - red;
         g.debug.body(house, 'rgb('+red+',0,'+blue+')');
-  */  
+  
     },
     
 
