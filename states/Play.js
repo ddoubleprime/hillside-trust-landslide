@@ -26,8 +26,7 @@ var playState = function(game) {
 var shovelMode = false;
 var shovelButton;
 var changeFlag = false;
-var adding_shovel
-var digging_shovel
+var adding_shovel, digging_shovel, active_shovel;
 
 playState.prototype = {
 
@@ -41,10 +40,12 @@ playState.prototype = {
         timeDisplay = g.add.text(5, 5, [], { fill: '#001122', font: '14pt Arial' });
         
                 // Set up handlers for mouse events
+        g.input.mouse.enabled = true
         g.input.onDown.add(this.mouseDragStart, this);
         g.input.addMoveCallback(this.mouseDragMove, this);
         g.input.onUp.add(this.mouseDragEnd, this);
-    
+//        g.input.onDown.addOnce(this.addDefaultShovel, this);
+
         shovelButton = g.add.button(20, 20, 'shovel', this.startShovelMode, this);
         shovelButton.scale.setTo(0.025, 0.025);
         adding_shovel = new this.Shovel(2,-2); // (w,d)
@@ -68,10 +69,10 @@ playState.prototype = {
         g.physics.box2d.setPTMRatio(dx_canvas);  
         
         // Default physics properties
-        g.physics.box2d.gravity.y = 2000;
-        g.physics.box2d.density = 1; 
-        g.physics.box2d.friction = 0.3; 
-        g.physics.box2d.restitution = 0.2;
+        g.physics.box2d.gravity.y = 500;
+        g.physics.box2d.density = 2; 
+        g.physics.box2d.friction = 0.5; 
+        g.physics.box2d.restitution = 0.1;
         // word bounds for physics
         //g.world.setBounds(-100, 0, worldW+100, worldH);
         g.physics.box2d.setBoundsToWorld();
@@ -172,23 +173,11 @@ playState.prototype = {
         */
         if (shovelMode) {
             
-
-            ti.pause()
+            active_shovel = adding_shovel;     // algorithm to decide which is active
             
             // change cursor
             g.canvas.style.cursor = "crosshair"
-            //soil_surface = this.applyShovel(adding_shovel,g.input.x,x_axis,soil_surface);
-
-
-            // wait for click and then get mouse position
-            g.input.onDown.addOnce(this.useShovel, this);
-            
-            // really only the x-position matters. but we might wish to limit the tool to operating only within some smaller distance of the land surface.
-
-            
-            shovelMode = false;
-            changeFlag = true;
-            ti.resume()
+            g.input.onDown.addOnce(this.digActiveShovel, this);
 
         } // shovelmode
         
@@ -196,7 +185,7 @@ playState.prototype = {
          if (changeFlag == true) {
              
             soil_surface_canvas = this.arrayScale(soil_surface,dy_canvas,worldH);
-            this.drawgraphic(soil_graphic,bot_pts,this.two1dto2d(x_axis_canvas,soil_surface_canvas),soilclr);
+             this.drawgraphic(soil_graphic,bot_pts,this.two1dto2d(x_axis_canvas,soil_surface_canvas),soilclr);
 
             g.world.bringToTop(bedrock_graphic);
 
@@ -207,7 +196,7 @@ playState.prototype = {
 
             changeFlag = false;
             
-         }
+         }   // changeFlag
 
     },
 
@@ -348,8 +337,16 @@ playState.prototype = {
         shovelMode = true;
     },
 
-    useShovel: function(){
-        soil_surface = this.applyShovel(digging_shovel,g.input.mousePointer.x,x_axis,soil_surface);
+//    digDefaultShovel: function(){
+//        console.log(g.input.x)
+//        soil_surface = this.applyShovel(digging_shovel,g.input.x,x_axis,soil_surface);
+//    },
+    
+    digActiveShovel: function(){
+        soil_surface = this.applyShovel(active_shovel,g.input.x,x_axis,soil_surface);
+        g.canvas.style.cursor = "default"
+        shovelMode = false;
+        changeFlag = true;
     },
     
     contactCallback: function (body1, body2, fixture1, fixture2, begin, contact) {
@@ -386,7 +383,7 @@ playState.prototype = {
 
     render: function () {
 
-        g.debug.box2dWorld();
+/*        g.debug.box2dWorld();
         // Default color is white
         g.debug.body(soil_graphic);
         //g.debug.body(house,'rgb(0,0,0)');
@@ -396,7 +393,7 @@ playState.prototype = {
         var red = Math.floor(red);
         var blue = 255 - red;
         g.debug.body(house, 'rgb('+red+',0,'+blue+')');
-    
+  */  
     },
     
 
