@@ -18,6 +18,7 @@ preload: function(){
   g.load.image('soil', 'ls-assets/soil_basic.png');
   g.load.image('trees1', 'ls-assets/trees1.png');
   g.load.image('quest', 'ls-assets/question.png');
+  g.load.image('dumptruck', 'ls-assets/dumptruck.png');
 
   g.load.image('trees2', 'ls-assets/trees2.png');
   g.load.spritesheet('rain', 'ls-assets/rain.png', 17, 17);

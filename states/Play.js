@@ -24,9 +24,13 @@ var playState = function(game) {
 };
 
 var shovelMode = false;
-var shovelButton;
+var dumpMode = false;
+var shovelButton, dumpButton;
 var changeFlag = false;
 var adding_shovel, digging_shovel, active_shovel;
+
+var esckey;
+
 
 playState.prototype = {
 
@@ -44,10 +48,12 @@ playState.prototype = {
         g.input.onDown.add(this.mouseDragStart, this);
         g.input.addMoveCallback(this.mouseDragMove, this);
         g.input.onUp.add(this.mouseDragEnd, this);
-//        g.input.onDown.addOnce(this.addDefaultShovel, this);
-
-        shovelButton = g.add.button(20, 20, 'shovel', this.startShovelMode, this);
+        esckey = g.input.keyboard.addKey(Phaser.Keyboard.ESC);
+        shovelButton = g.add.button(worldW-150, 20, 'shovel', this.toggleShovelMode, this);
         shovelButton.scale.setTo(0.025, 0.025);
+        dumpButton = g.add.button(worldW-80, 20, 'dumptruck', this.toggleDumpMode, this);
+        dumpButton.scale.setTo(0.25, 0.25);
+        
         adding_shovel = new this.Shovel(2,-2); // (w,d)
         digging_shovel = new this.Shovel(2,2);
         
@@ -173,12 +179,26 @@ playState.prototype = {
         */
         if (shovelMode) {
             
+            active_shovel = digging_shovel;     // algorithm to decide which is active
+            
+            // glowing button
+            shovelButton.tint = 0xFF9966;
+            // change cursor
+            g.canvas.style.cursor = "sw-resize";
+            g.input.onDown.addOnce(this.digActiveShovel, this);
+            
+        } // shovelmode
+        
+        if (dumpMode) {
+                
             active_shovel = adding_shovel;     // algorithm to decide which is active
             
+            // glowing button
+            dumpButton.tint = 0xFF9966;
             // change cursor
-            g.canvas.style.cursor = "crosshair"
+            g.canvas.style.cursor = "crosshair";
             g.input.onDown.addOnce(this.digActiveShovel, this);
-
+            
         } // shovelmode
         
         
@@ -333,20 +353,56 @@ playState.prototype = {
     
 /* CALLBACKS and INPUT EVENTS */    
     
-    startShovelMode: function (){
-        shovelMode = true;
+    toggleShovelMode: function (){
+        
+        if (shovelMode == true) {
+            shovelMode = false;
+            shovelButton.tint = 0xFFFFFF;
+            g.canvas.style.cursor = "default"
+            // destroy shovel listeners
+            esckey.onDown.remove(this.toggleShovelMode, this);
+            g.input.onDown.remove(this.digActiveShovel, this);
+        } else {
+            // one mode at a time. this approach will become unwieldy with more than a few buttons
+            if (dumpMode) {
+                this.toggleDumpMode();
+            }
+            
+            shovelMode = true;
+            esckey.onDown.addOnce(this.toggleShovelMode, this);
+        }
     },
+    
+    toggleDumpMode: function (){
 
-//    digDefaultShovel: function(){
-//        console.log(g.input.x)
-//        soil_surface = this.applyShovel(digging_shovel,g.input.x,x_axis,soil_surface);
-//    },
+        if (dumpMode == true) {
+            dumpMode = false;
+            dumpButton.tint = 0xFFFFFF;
+            g.canvas.style.cursor = "default"
+            // destroy shovel listeners
+            esckey.onDown.remove(this.toggleDumpMode, this);
+            g.input.onDown.remove(this.digActiveShovel, this);
+        } else {
+            
+            // one mode at a time. this approach will become unwieldy with more than a few buttons
+            if (shovelMode) {
+                this.toggleShovelMode();
+            }
+
+            dumpMode = true;
+            esckey.onDown.addOnce(this.toggleDumpMode, this);
+        }
+    },
     
     digActiveShovel: function(){
-        soil_surface = this.applyShovel(active_shovel,g.input.x,x_axis,soil_surface);
-        g.canvas.style.cursor = "default"
-        shovelMode = false;
-        changeFlag = true;
+        if (!shovelButton.input.pointerOver() && !dumpButton.input.pointerOver()) {
+
+            soil_surface = this.applyShovel(active_shovel,g.input.x,x_axis,soil_surface);
+            g.canvas.style.cursor = "default"
+            //shovelMode = false;
+            changeFlag = true;
+            
+        }
     },
     
     contactCallback: function (body1, body2, fixture1, fixture2, begin, contact) {
