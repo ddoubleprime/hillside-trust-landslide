@@ -388,7 +388,7 @@ playState.prototype = {
         // update the soil surface using these points (as normal)
         // use old and new in the changed section as top and bottom for a new graphics body
         slide_thickness = this.arrayAdd(soil_surface,post_ls_surface,-1);
-        slide_thickness = this.arrayThresh(slide_thickness,0.1);
+        slide_thickness = this.arrayThresh(slide_thickness,0.2*Math.max.apply(Math,slide_thickness));
         
         
         // need the x-range of the body points (nonzero elements in thresholded thickness.)
@@ -429,6 +429,8 @@ playState.prototype = {
         slide_body.body.checkWorldBounds = true;
         slide_body.outOfBoundsKill = true;
         slide_body.bullet=false;
+        
+        slide_body.body.velocity.y = 0.05;
         
     },
     
@@ -531,7 +533,7 @@ playState.prototype = {
     
 
     render: function () {
-
+/*
        g.debug.box2dWorld();
         // Default color is white
         g.debug.body(soil_graphic);
@@ -542,7 +544,7 @@ playState.prototype = {
         var red = Math.floor(red);
         var blue = 255 - red;
         g.debug.body(house, 'rgb('+red+',0,'+blue+')');
-  
+  */
     },
     
 
