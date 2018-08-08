@@ -60,7 +60,7 @@ playState.prototype = {
         
         adding_shovel = new this.Shovel(2,-2); // (w,d)
         digging_shovel = new this.Shovel(2,2);
-        landslide_shovel = new this.Shovel(5,8)
+        landslide_shovel = new this.Shovel(5,15)
         
         x_axis = this.vector(0,100,dx); // grid units
         y_base = Array(x_axis.length); // grid units
@@ -93,7 +93,7 @@ playState.prototype = {
         
         console.log(g.physics.box2d);
         
-        lkey.onDown.addOnce(this.doLandslide, this)
+        lkey.onDown.add(this.doLandslide, this)
         
         /* CREATE: SURFACE ARRAYS */
         
@@ -274,6 +274,22 @@ playState.prototype = {
         return xa; }
         else {console.log('arrayAdd: Arrays not of the same length')}
     },   
+
+    arrayThresh: function (arr,thrsh){
+
+        var xa = Array(arr.length);
+
+        for (var i=0;i<arr.length;i++) {
+            if (arr[i] < thrsh) {
+                xa[i] = 0;
+            } else {
+                xa[i] = arr[i];
+            }
+        }
+
+        return xa;
+
+},
     
     sinFunc: function(arr,amp,pd,phase) {
         // returns an array with a shifted sinusoid
@@ -368,48 +384,56 @@ playState.prototype = {
         
         // use the landslide_shovel to get the "failure plane"
         
-        var post_ls_surface = this.applyShovel(landslide_shovel,worldW/2,x_axis,soil_surface);
+        var post_ls_surface = this.applyShovel(landslide_shovel,worldW*(3/4),x_axis,soil_surface);
         // update the soil surface using these points (as normal)
         // use old and new in the changed section as top and bottom for a new graphics body
         slide_thickness = this.arrayAdd(soil_surface,post_ls_surface,-1);
-        
-                        console.log(slide_thickness)
-
         slide_thickness = this.arrayThresh(slide_thickness,0.1);
         
-        // probably want to round off the long tails of the gaussians too
-        // so centered on the max difference and with a linear taper to radius r
         
-        soil_surface = post_ls_surface;
-                console.log(slide_thickness)
-
+        // need the x-range of the body points (nonzero elements in thresholded thickness.)
+        var slide_area_l = slide_thickness.findIndex(this.checkNonZero);
+        var slide_thick_local = slide_thickness.filter(this.checkNonZero);
+        var slide_area_r = slide_area_l+slide_thick_local.length;
+        
+        soil_surface = post_ls_surface;        
         changeFlag = true;
         
-        this.drawSlideBody();
-        
-        console.log('fired!')
-    },
-    
-    drawSlideBody: function () {
-        
-        
+        this.updateLandscapeGraphics;
+        this.drawSlideBody( slide_thick_local, post_ls_surface.slice(slide_area_l,slide_area_r),slide_area_l,slide_area_r );
         
     },
     
-    arrayThresh: function (arr,thrsh){
-            
-        var xa = Array(arr.length);
+    drawSlideBody: function (arrH,arrB,lIdx,rIdx) {
+        // draws a graphics object 
+        // should probably add the new one to the stage here and then draw to it.
+        // these will go in an array of multiple slide bodies if needed.
+        var ls_surface = this.arrayAdd(arrH,arrB,1);
+        var ls_surface_canvas = this.arrayScale(ls_surface,dy_canvas,worldH);
+        var x_loc_canvas = this.arrayScale(x_axis.slice(lIdx,rIdx),dx_canvas,0);
+        var y_base_loc_canvas = this.arrayScale(arrB,dy_canvas,worldH-2);
+        
+        // make canvas-unit coordinate pairs for drawing
+        var bot_loc = this.two1dto2d(x_loc_canvas,y_base_loc_canvas);
+        var top_loc = this.two1dto2d(x_loc_canvas,ls_surface_canvas);
 
-        for (var i=0;i<arr.length;i++) {
-            if (arr[i] < thrsh) {
-                xa[i] = 0;
-            } else {
-                xa[i] = arr[i];
-            }
-        }
+        this.drawgraphic(slide_body,bot_loc,top_loc,soilclr) 
+        
+        g.physics.box2d.enable(slide_body);
 
-        return xa;
+        bodypoly = this.boxPolygonArray( x_loc_canvas.concat(x_loc_canvas), ls_surface_canvas.concat(y_base_loc_canvas) );
+        
+        slide_body.body.setPolygon(bodypoly);
+        slide_body.body.static = false;
+        slide_body.body.collideWorldBounds = false;
+        slide_body.body.checkWorldBounds = true;
+        slide_body.outOfBoundsKill = true;
+        slide_body.bullet=false;
+        
+    },
     
+    checkNonZero: function (a) {
+        return a != 0;
     },
         
     updateLandscapeGraphics: function() {
