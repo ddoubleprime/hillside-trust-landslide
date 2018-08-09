@@ -511,7 +511,7 @@ infoHider: function () {
  this.saturationtext.setText("Saturation:");
  this.failuretext.setText("Failure Plane:");
  //this.frictiontext.setText("Angle of Internal Friction:");
-this.FStext.setText("Factor of Safety:");
+ this.FStext.setText("Factor of Safety:");
 },
 
 

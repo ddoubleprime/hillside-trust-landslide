@@ -144,9 +144,7 @@ playState.prototype = {
         
         // house properties for reference; can use defaults for most objects
         house.body.setRectangle(40,55);
-        //house.body.dynamic = true;
         house.body.collideWorldBounds = false;
-        house.body.checkWorldBounds = true;
         house.outOfBoundsKill = true;
         house.fixedRotation = false; 
         house.bullet = false; house.linearDamping = 0; house.body.angularDamping = 1; house.gravityScale = 1;
@@ -155,8 +153,6 @@ playState.prototype = {
         house.body.friction = 0.9;
         house.body.restitution = 0;
         house.body.mass = 1; 
-        
-        //house.body.setBodyContactCallback(soil_graphic, this.contactCallback, this);
         
         /* CREATE: TIMING */
         ti.start();
@@ -387,7 +383,7 @@ playState.prototype = {
         var post_ls_surface = this.applyShovel(landslide_shovel,worldW*(3/4),x_axis,soil_surface);
         // update the soil surface using these points (as normal)
         // use old and new in the changed section as top and bottom for a new graphics body
-        slide_thickness = this.arrayAdd(soil_surface,post_ls_surface,-1);
+        var slide_thickness = this.arrayAdd(soil_surface,post_ls_surface,-1);
         slide_thickness = this.arrayThresh(slide_thickness,0.2*Math.max.apply(Math,slide_thickness));
         
         
@@ -399,8 +395,10 @@ playState.prototype = {
         soil_surface = post_ls_surface;        
         changeFlag = true;
         
-        this.updateLandscapeGraphics;
-        this.drawSlideBody( slide_thick_local, post_ls_surface.slice(slide_area_l,slide_area_r),slide_area_l,slide_area_r );
+        this.updateLandscapeGraphics();
+        this.slideBodyToBalls( slide_thick_local, post_ls_surface.slice(slide_area_l,slide_area_r),slide_area_l,slide_area_r );
+        
+        //this.drawSlideBody( slide_thick_local, post_ls_surface.slice(slide_area_l,slide_area_r),slide_area_l,slide_area_r );
         
     },
     
@@ -417,8 +415,8 @@ playState.prototype = {
         var bot_loc = this.two1dto2d(x_loc_canvas,y_base_loc_canvas);
         var top_loc = this.two1dto2d(x_loc_canvas,ls_surface_canvas);
 
-        this.drawgraphic(slide_body,bot_loc,top_loc,soilclr) 
-        
+        this.drawgraphic(slide_body,bot_loc,top_loc,soilclr);
+                
         g.physics.box2d.enable(slide_body);
 
         bodypoly = this.boxPolygonArray( x_loc_canvas.concat(x_loc_canvas), ls_surface_canvas.concat(y_base_loc_canvas) );
@@ -426,12 +424,62 @@ playState.prototype = {
         slide_body.body.setPolygon(bodypoly);
         slide_body.body.static = false;
         slide_body.body.collideWorldBounds = false;
-        slide_body.body.checkWorldBounds = true;
+        //slide_body.body.checkWorldBounds = true;
         slide_body.outOfBoundsKill = true;
-        slide_body.bullet=false;
+        slide_body.bullet = false;
         
         slide_body.body.velocity.y = 0.05;
         
+    },
+    
+    interp1: function(x_pts,y_pts,xi) {
+        // interpolates position x=xi within the points defined by x_pts, y_pts
+        // using a simple linear interpolation
+        
+        // find indices of nearest 2 x-points to xi
+        var x1i = x_pts.findIndex( function(x) { return x >= xi })
+        var x2i = x1+1; // need to code against on/out of bounds errors
+                console.log(x1i,x2i)
+
+        // then it's just (y2-y1)/(x2-x1) * (xi-x1) + x1
+        
+        
+        return 8
+        
+    },
+    
+    slideBodyToBalls: function (arrH,arrB,lIdx,rIdx) {
+        // takes the arrays that define a slide body and fills the space with rectangular physics bodies of a specifed size.
+        var ls_surface = this.arrayAdd(arrH,arrB,1);
+        var ls_surface_canvas = this.arrayScale(ls_surface,dy_canvas,worldH);
+        var x_loc_canvas = this.arrayScale(x_axis.slice(lIdx,rIdx),dx_canvas,0);
+        var y_base_loc_canvas = this.arrayScale(arrB,dy_canvas,worldH-2);
+        
+        // iterate along x axis at a spacing equal to (or very slightly greater than) the desired physics body size
+        // at each x-position, iterate at increments of y-body-size from base to surface
+        // if surface is lower than the next body increment, put a smaller body in that space
+        // return the array that contains the bodies for use in adding sprites to them later
+        var ball_container = [];
+        var ballsize = 5;  // px
+        for (var i = x_axis[lIdx]; i < x_axis[rIdx]; i+=(ballsize+0.01)/dx_canvas )
+            {
+                
+                for (var j = this.interp1(x_axis.slice(lIdx,rIdx),arrB,i); j < this.interp1(x_axis,ls_surface,i); j+=(ballsize+0.01)/dy_canvas) {
+                
+                    var bx = i*dx_canvas, by = j*dx_canvas;                // dx used for both because these bodies are drawn in canvas pixel units and are not vertically exaggerated.
+                    console.log(bx,by) 
+
+                    var ball = new Phaser.Physics.Box2D.Body(this.game, null, bx, by);
+                    ball.setCircle(ballsize,ballsize);
+                    ball.bullet = true;
+                    ball.collideWorldBounds=false;
+                    ball.outOfBoundsKill = true;
+                    ball.friction = 0.01;
+
+                    ball_container.push(ball);
+                
+                }  // for j (y)
+            } // for i (x)
     },
     
     checkNonZero: function (a) {
@@ -533,7 +581,7 @@ playState.prototype = {
     
 
     render: function () {
-/*
+
        g.debug.box2dWorld();
         // Default color is white
         g.debug.body(soil_graphic);
@@ -544,7 +592,7 @@ playState.prototype = {
         var red = Math.floor(red);
         var blue = 255 - red;
         g.debug.body(house, 'rgb('+red+',0,'+blue+')');
-  */
+  
     },
     
 
