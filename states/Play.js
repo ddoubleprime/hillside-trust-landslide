@@ -24,6 +24,8 @@ var shovelMode = false;
 var dumpMode = false;
 var shovelButton, dumpButton;
 var changeFlag = false;
+var activeLS = false;
+var active_ls_balls = [];
 var adding_shovel, digging_shovel, landslide_shovel, active_shovel;
 
 var esckey;
@@ -80,7 +82,7 @@ playState.prototype = {
         g.physics.box2d.setPTMRatio(dx_canvas);  
         
         // Default physics properties
-        g.physics.box2d.gravity.y = 500;
+        g.physics.box2d.gravity.y = 1000;
         g.physics.box2d.density = 2; 
         g.physics.box2d.friction = 0.5; 
         g.physics.box2d.restitution = 0.1;
@@ -210,11 +212,16 @@ playState.prototype = {
              this.updateLandscapeGraphics();
             
          }   // changeFlag
+        
+        if (activeLS) {
+            this.checkBalls(active_ls_balls,x_axis_canvas, this.arrayMax(soil_surface_canvas,bedrock_surface_canvas) );
+            if (this.isEmpty(active_ls_balls)) {activeLS = false};
+        }
 
     },
 
     
-/* SUPPORT FUNCTIONS */
+/* ARRAY FUNCTIONS */
     
     vector: function(mn,mx,step) {
         // creates a 1D array from mn to max by step. 
@@ -333,6 +340,75 @@ playState.prototype = {
         return out;
     },
     
+    interp1: function(x_pts,y_pts,xi) {
+        // interpolates position x=xi within the points defined by x_pts, y_pts
+        // using a simple linear interpolation
+
+        // find indices of nearest 2 x-points to xi
+        var x1i = x_pts.findIndex( function(x) { return x >= xi && x <= x_pts[x_pts.length-1] })
+
+        if (x1i < 0 || isNaN(x1i)) {
+            // array does not exist, is not an array, or is empty
+            console.log('interpolation outside of array bounds!'+xi)
+            return false;
+        } else {
+
+        var x2i = x1i+1; // need to code against on/out of bounds errors
+
+        // then it's just (y2-y1)/(x2-x1) * (xi-x1) + x1
+        var interppt = (y_pts[x2i]-y_pts[x1i])/(x_pts[x2i]-x_pts[x1i]) * (xi-x_pts[x1i]) + y_pts[x1i];
+        //console.log(x1i,x2i,interppt)
+        return interppt;
+    }
+
+},
+    
+    arrayMin: function(arr1,arr2){
+        
+        // from arrays of the same length, takes
+        // elementwise the lowest value from either array
+        // and returns result as a new array  
+        if (arr1.length == arr2.length){
+            
+            var xa = Array(arr1.length);
+
+            for (var i=0;i<arr1.length;i++) {
+                xa[i] = Math.min(arr1[i],arr2[i]);
+            }
+
+        return xa; }
+        else {console.log('arrayMin: Arrays not of the same length')}
+        
+    },
+    
+    arrayMax: function(arr1,arr2){
+        
+        // from arrays of the same length, takes
+        // elementwise the lowest value from either array
+        // and returns result as a new array  
+        if (arr1.length == arr2.length){
+            
+            var xa = Array(arr1.length);
+
+            for (var i=0;i<arr1.length;i++) {
+                xa[i] = Math.max(arr1[i],arr2[i]);
+            }
+
+        return xa; }
+        else {console.log('arrayMax: Arrays not of the same length')}
+        
+    },
+    
+    isEmpty: function(arr){
+        if (!Array.isArray(arr) || !arr.length) {
+            // array does not exist, is not an array, or is empty
+            return true;
+        } else { return false }
+        
+    },
+    
+/* SUPPORT FUNCTIONS */
+    
     drawgraphic: function(graphic, bottompoints, toppoints, fillclr){
         graphic.clear()
         graphic.beginFill(fillclr);
@@ -378,26 +454,37 @@ playState.prototype = {
     
     doLandslide: function() {
         
+        var ls_pos_x = Math.random()*worldW;
         // use the landslide_shovel to get the "failure plane"
+        var post_ls_surface = this.applyShovel(landslide_shovel,ls_pos_x,x_axis,soil_surface);
         
-        var post_ls_surface = this.applyShovel(landslide_shovel,worldW*(3/4),x_axis,soil_surface);
-        // update the soil surface using these points (as normal)
+        
+        // base of slide body needs to be above bedrock!
+        post_ls_surface = this.arrayMax(post_ls_surface,bedrock_surface);
+        
         // use old and new in the changed section as top and bottom for a new graphics body
         var slide_thickness = this.arrayAdd(soil_surface,post_ls_surface,-1);
         slide_thickness = this.arrayThresh(slide_thickness,0.2*Math.max.apply(Math,slide_thickness));
         
+        // update the soil surface using these points (as normal)
+        soil_surface = post_ls_surface;        
+        this.updateLandscapeGraphics();
         
         // need the x-range of the body points (nonzero elements in thresholded thickness.)
         var slide_area_l = slide_thickness.findIndex(this.checkNonZero);
         var slide_thick_local = slide_thickness.filter(this.checkNonZero);
         var slide_area_r = slide_area_l+slide_thick_local.length;
+                
+        var slide_base_padded = this.arrayScale(post_ls_surface.slice(slide_area_l,slide_area_r),1,0.001);
         
-        soil_surface = post_ls_surface;        
-        changeFlag = true;
+        // before passing the base array to slidebpodytoballs, need to isolate the part of the body that is above the bedrock surface
+        ballsize = 2;  // px
+            
+        var newballs = this.slideBodyToBalls( slide_thick_local,slide_base_padded,slide_area_l,slide_area_r, ballsize );
         
-        this.updateLandscapeGraphics();
-        this.slideBodyToBalls( slide_thick_local, post_ls_surface.slice(slide_area_l,slide_area_r),slide_area_l,slide_area_r );
-        
+        // add new balls to balls array
+        active_ls_balls = active_ls_balls.concat(newballs);
+        activeLS = true;
         //this.drawSlideBody( slide_thick_local, post_ls_surface.slice(slide_area_l,slide_area_r),slide_area_l,slide_area_r );
         
     },
@@ -432,27 +519,12 @@ playState.prototype = {
         
     },
     
-    interp1: function(x_pts,y_pts,xi) {
-        // interpolates position x=xi within the points defined by x_pts, y_pts
-        // using a simple linear interpolation
-        
-        // find indices of nearest 2 x-points to xi
-        var x1i = x_pts.findIndex( function(x) { return x >= xi })
-        var x2i = x1+1; // need to code against on/out of bounds errors
-                console.log(x1i,x2i)
-
-        // then it's just (y2-y1)/(x2-x1) * (xi-x1) + x1
-        
-        
-        return 8
-        
-    },
-    
-    slideBodyToBalls: function (arrH,arrB,lIdx,rIdx) {
+    slideBodyToBalls: function (arrH,arrB,lIdx,rIdx,ballsize) {
         // takes the arrays that define a slide body and fills the space with rectangular physics bodies of a specifed size.
         var ls_surface = this.arrayAdd(arrH,arrB,1);
         var ls_surface_canvas = this.arrayScale(ls_surface,dy_canvas,worldH);
-        var x_loc_canvas = this.arrayScale(x_axis.slice(lIdx,rIdx),dx_canvas,0);
+        var x_loc = x_axis.slice(lIdx,rIdx);
+        var x_loc_canvas = this.arrayScale(x_loc,dx_canvas,0);
         var y_base_loc_canvas = this.arrayScale(arrB,dy_canvas,worldH-2);
         
         // iterate along x axis at a spacing equal to (or very slightly greater than) the desired physics body size
@@ -460,26 +532,48 @@ playState.prototype = {
         // if surface is lower than the next body increment, put a smaller body in that space
         // return the array that contains the bodies for use in adding sprites to them later
         var ball_container = [];
-        var ballsize = 5;  // px
-        for (var i = x_axis[lIdx]; i < x_axis[rIdx]; i+=(ballsize+0.01)/dx_canvas )
+        var i_dx = (2*ballsize+0.01)/dx_canvas;
+        for (var i = x_axis[lIdx]; i <= x_axis[rIdx]-3*i_dx; i+=i_dx )
             {
+                var ymin = this.interp1(x_loc,arrB,i);
+                var ymax = this.interp1(x_loc,ls_surface,i);
+                var jdy = (2*ballsize+0.01)/dy_canvas;
                 
-                for (var j = this.interp1(x_axis.slice(lIdx,rIdx),arrB,i); j < this.interp1(x_axis,ls_surface,i); j+=(ballsize+0.01)/dy_canvas) {
-                
-                    var bx = i*dx_canvas, by = j*dx_canvas;                // dx used for both because these bodies are drawn in canvas pixel units and are not vertically exaggerated.
-                    console.log(bx,by) 
+                for (var j = ymin-jdy; j <= ymax; j-=jdy) {
+                    var bx = i*dx_canvas, by = worldH + j*dy_canvas;
+                    
+                    var ball = g.add.sprite(bx,by,'water');
+                    ball.width = 2*ballsize; ball.height = 2*ballsize;
+                    ball.tint = soilclr;
 
-                    var ball = new Phaser.Physics.Box2D.Body(this.game, null, bx, by);
-                    ball.setCircle(ballsize,ballsize);
-                    ball.bullet = true;
-                    ball.collideWorldBounds=false;
-                    ball.outOfBoundsKill = true;
-                    ball.friction = 0.01;
+        // assign physics bodies and properties        
+                    g.physics.box2d.enable(ball);
+                    ball.body.setCircle(ballsize);
+                    ball.body.bullet = true;
+                    ball.body.collideWorldBounds=false;
+                    ball.body.outOfBoundsKill = true;
+                    ball.body.friction = 0.1;
 
                     ball_container.push(ball);
                 
                 }  // for j (y)
             } // for i (x)
+        
+        return ball_container;
+    },
+    
+    checkBalls: function (ball_array,x_array,surf_array){
+        // iterate through ball array and kill any that are below surf_array
+        // canvas units for all input arrays
+        for (b=0;b<ball_array.length;b++) {
+            
+            bb = ball_array[b];
+            if ( bb.x >= worldW-bb.width || bb.y+0.1*bb.height > this.interp1(x_array,surf_array,bb.x) ) {
+                bb.destroy();
+                ball_array.splice(b,1);
+            }
+        } // for b
+
     },
     
     checkNonZero: function (a) {
@@ -581,18 +675,18 @@ playState.prototype = {
     
 
     render: function () {
-
+/*
        g.debug.box2dWorld();
         // Default color is white
         g.debug.body(soil_graphic);
-        //g.debug.body(house,'rgb(0,0,0)');
+       //g.debug.body(house,'rgb(0,0,0)');
         // Make falling block more red depending on vertical speed  
         var red = house.body.velocity.y * 0.5;
         red = Math.min(Math.max(red, 0), 255);
         var red = Math.floor(red);
         var blue = 255 - red;
         g.debug.body(house, 'rgb('+red+',0,'+blue+')');
-  
+  */
     },
     
 
