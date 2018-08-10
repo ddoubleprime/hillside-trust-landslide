@@ -322,22 +322,14 @@ playState.prototype = {
         // using a simple linear interpolation
 
         // find indices of nearest 2 x-points to xi
-        var x1i = x_pts.findIndex( function(x) { return x >= xi })
+        var idxpts = this.getAdjacentXPoints(x_pts,xi);
+        var x2i = idxpts[1];
+        var x1i = idxpts[0]; 
 
-        if (x1i < 0 || isNaN(x1i)) {
-            // array does not exist, is not an array, or is empty
-            console.log('interpolation outside of array bounds!'+xi)
-            return false;
-        } else {
-
-        var x2i = x1i+1; // need to code against on/out of bounds errors
-
-        // then it's just (y2-y1)/(x2-x1) * (xi-x1) + x1
+        // then it's just (y2-y1)/(x2-x1) * (xi-x1) + y1
         var interppt = (y_pts[x2i]-y_pts[x1i])/(x_pts[x2i]-x_pts[x1i]) * (xi-x_pts[x1i]) + y_pts[x1i];
         //console.log(x1i,x2i,interppt)
         return interppt;
-    }
-
 },
     
     arrayMin: function(arr1,arr2){
@@ -383,6 +375,38 @@ playState.prototype = {
         } else { return false }
         
     },
+    
+    getAdjacentXPoints: function(x_pts,xi) {
+        // input an x position, returns a 2-element array with the two adjacent indices of the input x-array. assumes input x-array is monotonic increasing to the right
+        // returns two nearest, so if beyond either end of the array returns the two endmost elements
+        var idxout = Array(2);
+
+        // check that xi is within array bounds  
+        var xlen = x_pts.length;
+        if (xi >= x_pts[xlen-1]) { 
+                idxout = [xlen-2,xlen-1];
+            } else if (xi <= x_pts[0]) {
+                idxout = [0,1];  
+            } else {
+
+            // find indices of nearest 2 x-points to xi
+            idxout[1] = x_pts.findIndex( function(x) { return x >= xi });
+            idxout[0] = idxout[1]-1; 
+
+        } // if xi
+        
+        return idxout;
+    },
+    
+    
+    getRegionalSlope: function() {
+        // input an array of evenly-spaced points and a grid spacing, and parameter windowsize (phys. units)
+        // returns the local slope averaged over the windowsize
+        
+        
+        
+    },
+    
     
 /* SUPPORT FUNCTIONS */
     
@@ -584,6 +608,8 @@ playState.prototype = {
         changeFlag = false;
     },
     
+
+    
     
 /* CALLBACKS and INPUT EVENTS */    
     
@@ -653,6 +679,9 @@ playState.prototype = {
 
     },
     
+    
+    
+    
 /* CONSTRUCTORS */
     
     Shovel: function(win,din){
@@ -691,7 +720,7 @@ playState.prototype = {
     pointsInArea: function (numPts) {
 
         for (var i = 0; i < numPts; i++) {
-            var xp = g.rnd.between(this.Xmin, this.Xmax );
+            var xp = g.rnd.between(0, worldW );
             //console.log(xp);
             var zp = this.randomZPoint(xp);
             //console.log(xp);
@@ -704,13 +733,13 @@ playState.prototype = {
     
     randomZPoint: function (xpoint) {
       var dot = [];
-      var topR = this.checkXPosition(xpoint, this.toppoints, 1);
-      var botR = this.checkXPosition(xpoint, this.bottompoints, -1);
 
-      var TopXY = this.findPosition(topR, xpoint, this.toppoints, 1);
-      var BotXY = this.findPosition(botR, xpoint, this.bottompoints, -1);
-
+      // interpolate y-bounds from soil and bedrock surface arrays
+        
+        
+        
       var slope =  this.findSlope(topR, this.toppoints, 1);
+        
       var zp = g.rnd.between(TopXY[1], BotXY[1]);
       var width = zp - this.toppoints[topR][1];
       
