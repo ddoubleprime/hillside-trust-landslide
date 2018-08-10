@@ -1,0 +1,34 @@
+TODO:
+
+Implement:
+
+1. Analysis point placement
+2. Analysis point properties
+    - requires topographic slope
+3. Saturation
+    - requires rain timer and button or equiv test mechanism
+4. Set surface as only physics chain/bedrock spearate chain is problematic
+5. Trees and other local point modifiers (proximity modifier object class, usable for drains, trees, roads, etc.)
+6. River object. Where the bedrock is at a local minimum, uses a shovel to dig soil to zero there and attaches a kill zone for physics bodies that reach the "river".
+7. Display scale bars H and V
+8. Balls back to soil after not moving for a certain time
+9. Analysis point fade and reimposed upon changes to soil thickness
+    - allow "sectoring" so only changed sectors are redotted
+    - take a horizontally-averaged soil moisture z-profile through the changed sector and use it to repopulate redotted sectors
+    
+
+Fix:
+
+1. Slide bodies not being converted to balls when within a short range of the right boundary
+
+
+Sprite work:
+
+1. button states
+2. house less tall
+
+
+DONE:
+
+√ House and other "real object" sprites should scale with the physical coordinate system 
+√ Balls not being killed when they accidentally cross into subsurface 

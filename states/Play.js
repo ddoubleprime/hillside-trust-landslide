@@ -7,7 +7,7 @@ var soilclr = 0x7C450D, rockclr = 0x003366;
 var dx = 1, VE = 3;     // x-spacing in grid units, vertical exaggeration
 var worldW = 603, worldH = 504;
 var y_base, soil_surface, bedrock_surface;
-var surf_amp=10,surf_wavelength=25,surf_shift=0;
+var surf_amp=20,surf_wavelength=50,surf_shift=-150;
 var dx_canvas, dy_canvas, x_axis_canvas, soil_surface_canvas;
 var soil_thickness;
 var HrField = document.getElementById("Hreg");	// pull reg height from HTML slider
@@ -30,7 +30,7 @@ var adding_shovel, digging_shovel, landslide_shovel, active_shovel;
 
 var esckey;
 var slide_body;
-
+var lkey, hkey;
 var playState = function(game) {
 
 };
@@ -55,12 +55,13 @@ playState.prototype = {
         g.input.onUp.add(this.mouseDragEnd, this);
         esckey = g.input.keyboard.addKey(Phaser.Keyboard.ESC);
         lkey = g.input.keyboard.addKey(Phaser.Keyboard.L)
+        hkey = g.input.keyboard.addKey(Phaser.Keyboard.H)
         shovelButton = g.add.button(worldW-150, 20, 'shovel', this.toggleShovelMode, this);
         shovelButton.scale.setTo(0.025, 0.025);
         dumpButton = g.add.button(worldW-80, 20, 'dumptruck', this.toggleDumpMode, this);
         dumpButton.scale.setTo(0.25, 0.25);
         
-        adding_shovel = new this.Shovel(2,-2); // (w,d)
+        adding_shovel = new this.Shovel(3,-2); // (w,d)
         digging_shovel = new this.Shovel(2,2);
         landslide_shovel = new this.Shovel(5,15)
         
@@ -82,8 +83,8 @@ playState.prototype = {
         g.physics.box2d.setPTMRatio(dx_canvas);  
         
         // Default physics properties
-        g.physics.box2d.gravity.y = 1000;
-        g.physics.box2d.density = 2; 
+        g.physics.box2d.gravity.y = -dy_canvas*9.81;
+        g.physics.box2d.density = 2000; 
         g.physics.box2d.friction = 0.5; 
         g.physics.box2d.restitution = 0.1;
         // word bounds for physics
@@ -96,6 +97,7 @@ playState.prototype = {
         console.log(g.physics.box2d);
         
         lkey.onDown.add(this.doLandslide, this)
+        hkey.onDown.add(this.newHouse, this)
         
         /* CREATE: SURFACE ARRAYS */
         
@@ -126,35 +128,24 @@ playState.prototype = {
         
                 
         /* CREATE: PHYSICS */
+        house = this.newHouse();
         
-        house = g.add.sprite(worldW/4,100,'house');
-
         // assign physics bodies and properties        
         g.physics.box2d.enable(soil_graphic);
         g.physics.box2d.enable(bedrock_graphic);
-        g.physics.box2d.enable(house);
                 
         var bodypoly = this.boxPolygonArray( x_axis_canvas,soil_surface_canvas );
         
         soil_graphic.body.setChain(bodypoly);
         soil_graphic.body.static = true;
+        soil_graphic.body.bullet = true;
         
-        bodypoly = this.boxPolygonArray( x_axis_canvas.concat([0]), bedrock_surface_canvas.concat([worldH]) );
+//        bodypoly = this.boxPolygonArray( x_axis_canvas.concat([0]), bedrock_surface_canvas.concat([worldH]) );
+                bodypoly = this.boxPolygonArray( x_axis_canvas, bedrock_surface_canvas );
         
-        bedrock_graphic.body.setPolygon(bodypoly);
+        bedrock_graphic.body.setChain(bodypoly);
         bedrock_graphic.body.static = true;
         
-        // house properties for reference; can use defaults for most objects
-        house.body.setRectangle(40,55);
-        house.body.collideWorldBounds = false;
-        house.outOfBoundsKill = true;
-        house.fixedRotation = false; 
-        house.bullet = false; house.linearDamping = 0; house.body.angularDamping = 1; house.gravityScale = 1;
-        // These will affect all fixtures on the body 
-        house.sensor = true;
-        house.body.friction = 0.9;
-        house.body.restitution = 0;
-        house.body.mass = 1; 
         
         /* CREATE: TIMING */
         ti.start();
@@ -214,7 +205,7 @@ playState.prototype = {
          }   // changeFlag
         
         if (activeLS) {
-            this.checkBalls(active_ls_balls,x_axis_canvas, this.arrayMax(soil_surface_canvas,bedrock_surface_canvas) );
+            this.checkBalls( active_ls_balls,x_axis_canvas, this.arrayMin(soil_surface_canvas,bedrock_surface_canvas) );
             if (this.isEmpty(active_ls_balls)) {activeLS = false};
         }
 
@@ -345,7 +336,7 @@ playState.prototype = {
         // using a simple linear interpolation
 
         // find indices of nearest 2 x-points to xi
-        var x1i = x_pts.findIndex( function(x) { return x >= xi && x <= x_pts[x_pts.length-1] })
+        var x1i = x_pts.findIndex( function(x) { return x >= xi })
 
         if (x1i < 0 || isNaN(x1i)) {
             // array does not exist, is not an array, or is empty
@@ -452,6 +443,7 @@ playState.prototype = {
     
     },
     
+ 
     doLandslide: function() {
         
         var ls_pos_x = Math.random()*worldW;
@@ -533,7 +525,7 @@ playState.prototype = {
         // return the array that contains the bodies for use in adding sprites to them later
         var ball_container = [];
         var i_dx = (2*ballsize+0.01)/dx_canvas;
-        for (var i = x_axis[lIdx]; i <= x_axis[rIdx]-3*i_dx; i+=i_dx )
+        for (var i = x_axis[lIdx]; i <= x_axis[rIdx]-i_dx; i+=i_dx )
             {
                 var ymin = this.interp1(x_loc,arrB,i);
                 var ymax = this.interp1(x_loc,ls_surface,i);
@@ -545,14 +537,15 @@ playState.prototype = {
                     var ball = g.add.sprite(bx,by,'water');
                     ball.width = 2*ballsize; ball.height = 2*ballsize;
                     ball.tint = soilclr;
+                    ball.anchor.x = 0.5; ball.anchor.y = 0.5;
 
-        // assign physics bodies and properties        
+                    // assign physics bodies and properties        
                     g.physics.box2d.enable(ball);
                     ball.body.setCircle(ballsize);
                     ball.body.bullet = true;
                     ball.body.collideWorldBounds=false;
                     ball.body.outOfBoundsKill = true;
-                    ball.body.friction = 0.1;
+                    ball.body.friction = 0.7;
 
                     ball_container.push(ball);
                 
@@ -568,7 +561,7 @@ playState.prototype = {
         for (b=0;b<ball_array.length;b++) {
             
             bb = ball_array[b];
-            if ( bb.x >= worldW-bb.width || bb.y+0.1*bb.height > this.interp1(x_array,surf_array,bb.x) ) {
+            if ( bb.x >= worldW-bb.width || bb.y > this.interp1(x_array,surf_array,bb.x) ) {
                 bb.destroy();
                 ball_array.splice(b,1);
             }
@@ -578,6 +571,15 @@ playState.prototype = {
     
     checkNonZero: function (a) {
         return a != 0;
+    },
+    
+    scaleToPhysWidth: function (obj,w) {
+        // scales any object with .height and .width properties proportionally to desired real-world width w
+        var hwr = obj.height / obj.width;
+        obj.width = w*dx_canvas;
+        obj.height = obj.width * hwr;
+        
+        return obj
     },
         
     updateLandscapeGraphics: function() {
@@ -593,6 +595,7 @@ playState.prototype = {
 
         soil_graphic.body.setChain(bodypoly);
         soil_graphic.body.static = true;
+        soil_graphic.body.bullet = true;
 
         changeFlag = false;
     },
@@ -673,9 +676,32 @@ playState.prototype = {
         this.depth= din;
     },
     
+    newHouse: function(){
+        
+        var house = g.add.sprite(worldW/4,100,'house')
+        
+        house = this.scaleToPhysWidth(house,15); // (object, desired width in physical units)
+        
+        g.physics.box2d.enable(house);
+        // house properties for reference; can use defaults for most objects
+        house.body.setRectangle(house.width*.6,house.height);
+        house.body.collideWorldBounds = false;
+        house.outOfBoundsKill = true;
+        house.fixedRotation = false; 
+        house.bullet = false; house.linearDamping = 0; house.body.angularDamping = 1; house.gravityScale = 0;
+        // These will affect all fixtures on the body 
+        house.sensor = false;
+        house.body.friction = 0.9;
+        house.body.restitution = 0;
+        house.body.mass = 10000; 
+        house.body.density = 1000;
+        
+        return house;
 
+    },
+    
     render: function () {
-/*
+
        g.debug.box2dWorld();
         // Default color is white
         g.debug.body(soil_graphic);
@@ -686,7 +712,7 @@ playState.prototype = {
         var red = Math.floor(red);
         var blue = 255 - red;
         g.debug.body(house, 'rgb('+red+',0,'+blue+')');
-  */
+  
     },
     
 
