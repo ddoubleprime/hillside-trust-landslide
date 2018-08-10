@@ -7,7 +7,7 @@ var soilclr = 0x7C450D, rockclr = 0x003366;
 var dx = 1, VE = 3;     // x-spacing in grid units, vertical exaggeration
 var worldW = 603, worldH = 504;
 var y_base, soil_surface, bedrock_surface;
-var surf_amp=20,surf_wavelength=50,surf_shift=-150;
+var surf_amp=20,surf_wavelength=50,surf_shift=-20;
 var dx_canvas, dy_canvas, x_axis_canvas, soil_surface_canvas;
 var soil_thickness;
 var HrField = document.getElementById("Hreg");	// pull reg height from HTML slider
@@ -101,50 +101,36 @@ playState.prototype = {
         
         /* CREATE: SURFACE ARRAYS */
         
-        // prepare the land surface array
+        // prepare the bedrock surface array
         bedrock_surface = this.sinFunc(x_axis,surf_amp,surf_wavelength,surf_shift);
         this.rebaseFunc(bedrock_surface);
         // convert to canvas coordinates
+        bedrock_surface_canvas = this.arrayScale(bedrock_surface,dy_canvas,worldH);
+        
+        // prepare the soil surface array
         soil_surface = this.arrayScale(bedrock_surface,1,Hr);
-        soil_surface_canvas = this.arrayScale(soil_surface,dy_canvas,worldH);
+
+        // assign physics bodies and properties        
+        g.physics.box2d.enable(soil_graphic); // not necessary - make surface a free body
+
         y_base_canvas = this.arrayScale(y_base,dy_canvas,worldH);
         
         // make canvas-unit coordinate pairs for drawing
         bot_pts = this.two1dto2d(x_axis_canvas,y_base_canvas);
-        top_pts = this.two1dto2d(x_axis_canvas,soil_surface_canvas);
-
-        this.drawgraphic(soil_graphic,bot_pts,top_pts,soilclr)
         
-        // prepare the bedrock surface array
-        bedrock_surface_canvas = this.arrayScale(bedrock_surface,dy_canvas,worldH);
-        // make canvas-unit coordinate pairs for drawing
+        this.updateLandscapeGraphics();
+        
+        
+        // make canvas-unit coordinate pairs for drawing and draw bedrock graphic
         top_pts = this.two1dto2d(x_axis_canvas,bedrock_surface_canvas);
-
         this.drawgraphic(bedrock_graphic,bot_pts,top_pts,rockclr)
-
-        // derive thickness array
-        soil_thickness = this.arrayAdd(soil_surface,bedrock_surface,-1);
-        
         
                 
         /* CREATE: PHYSICS */
         house = this.newHouse();
         
-        // assign physics bodies and properties        
-        g.physics.box2d.enable(soil_graphic);
-        g.physics.box2d.enable(bedrock_graphic);
-                
-        var bodypoly = this.boxPolygonArray( x_axis_canvas,soil_surface_canvas );
+
         
-        soil_graphic.body.setChain(bodypoly);
-        soil_graphic.body.static = true;
-        soil_graphic.body.bullet = true;
-        
-//        bodypoly = this.boxPolygonArray( x_axis_canvas.concat([0]), bedrock_surface_canvas.concat([worldH]) );
-                bodypoly = this.boxPolygonArray( x_axis_canvas, bedrock_surface_canvas );
-        
-        bedrock_graphic.body.setChain(bodypoly);
-        bedrock_graphic.body.static = true;
         
         
         /* CREATE: TIMING */
@@ -442,7 +428,6 @@ playState.prototype = {
         
     
     },
-    
  
     doLandslide: function() {
         
@@ -561,7 +546,7 @@ playState.prototype = {
         for (b=0;b<ball_array.length;b++) {
             
             bb = ball_array[b];
-            if ( bb.x >= worldW-bb.width || bb.y > this.interp1(x_array,surf_array,bb.x) ) {
+            if ( bb.x >= worldW-0.5*bb.width || bb.y > this.interp1(x_array,surf_array,bb.x) ) {
                 bb.destroy();
                 ball_array.splice(b,1);
             }
@@ -591,11 +576,10 @@ playState.prototype = {
 
         g.world.bringToTop(bedrock_graphic);
 
-        var bodypoly = this.boxPolygonArray( x_axis_canvas,soil_surface_canvas );
+        var bodypoly = this.boxPolygonArray( x_axis_canvas, this.arrayMin(soil_surface_canvas,bedrock_surface_canvas) );
 
         soil_graphic.body.setChain(bodypoly);
         soil_graphic.body.static = true;
-        soil_graphic.body.bullet = true;
 
         changeFlag = false;
     },
@@ -699,6 +683,88 @@ playState.prototype = {
         return house;
 
     },
+    
+    
+    
+/* ANALYSIS POINTS */
+    
+    pointsInArea: function (numPts) {
+
+        for (var i = 0; i < numPts; i++) {
+            var xp = g.rnd.between(this.Xmin, this.Xmax );
+            //console.log(xp);
+            var zp = this.randomZPoint(xp);
+            //console.log(xp);
+            //console.log(zp);
+            this.addDotToGroup(xp, zp);
+
+        }
+    },
+    
+    
+    randomZPoint: function (xpoint) {
+      var dot = [];
+      var topR = this.checkXPosition(xpoint, this.toppoints, 1);
+      var botR = this.checkXPosition(xpoint, this.bottompoints, -1);
+
+      var TopXY = this.findPosition(topR, xpoint, this.toppoints, 1);
+      var BotXY = this.findPosition(botR, xpoint, this.bottompoints, -1);
+
+      var slope =  this.findSlope(topR, this.toppoints, 1);
+      var zp = g.rnd.between(TopXY[1], BotXY[1]);
+      var width = zp - this.toppoints[topR][1];
+      
+      dot.x = xpoint;
+      dot.y = zp;
+      
+      dot.theta = this.rad2Deg(Math.atan(slope));
+      dot.saturation=0;
+      dot.satDepth=0;
+      dot.sH=width;
+      dot.cohesion=this.Coh;
+      dot.FS=this.FScalc(dot);
+
+
+      this.dots.push(dot);
+
+
+      return zp;
+
+    },
+    
+    
+    addDotToGroup: function(x,z) {
+
+        var dot = g.add.graphics(0, 0);
+            // graphics.lineStyle(2, 0xffd900, 1);
+
+        dot.beginFill(0x0000FF, 1);
+        dot.drawCircle(x, z , 4);
+
+        if(this.showdotmode){
+          g.world.bringToTop(dot);
+        }else{
+          g.world.bringToTop(this.graphic);
+          g.world.bringToTop(this.bedrock);
+        }
+
+        this.dotGroup.add(dot);
+    },
+    
+    FScalc: function (point) {
+        return ( (point.cohesion + rho_r-point.saturation*rho_w)*grav*Math.cos(this.deg2Rad(point.theta))*Math.tan(this.deg2Rad(this.phi))*point.sH ) / (rho_r*grav*point.sH*Math.sin(this.deg2Rad(point.theta)));
+    },
+
+    deg2Rad: function (val) {
+        return val * Math.PI / 180;
+    },
+
+    rad2Deg: function(val){
+        return val * 180 / Math.PI;;
+    },
+
+    
+/* RENDER */
     
     render: function () {
 
