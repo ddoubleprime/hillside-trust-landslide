@@ -24,8 +24,6 @@ Implement:
 Fix:
 
 1. Slide bodies not being converted to balls when within a short range of the right boundary
-2. Still a fair number of balls killed when running over sharply convex obstacles
-    - can be fixed by killing when below lowest adjacent point, rather than interpolation between
 3. Are killed bodies that exit L side removed properly from the balls array?
 
 
@@ -41,3 +39,5 @@ DONE:
 √ House and other "real object" sprites should scale with the physical coordinate system 
 √ Balls not being killed when they accidentally cross into subsurface 
 √ Set surface as only physics chain/bedrock separate chain is problematic
+√ Still a fair number of balls killed when running over sharply convex obstacles
+    - can be fixed by killing when below lowest adjacent point, rather than interpolation between (note: fixed interpolation routine instead :) ).

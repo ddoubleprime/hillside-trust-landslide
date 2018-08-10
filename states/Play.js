@@ -398,7 +398,6 @@ playState.prototype = {
         return idxout;
     },
     
-    
     getRegionalSlope: function() {
         // input an array of evenly-spaced points and a grid spacing, and parameter windowsize (phys. units)
         // returns the local slope averaged over the windowsize
