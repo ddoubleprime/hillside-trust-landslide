@@ -4,9 +4,11 @@ Implement:
 
 1. Analysis point placement and update handling
     - tied by depth to land surface except during landslide, when they stay in place during active LS and then are destroyed where the LS has ocurred.
+        - is it worth having 2 behaviors? How about redotting where thickened (below existing points)? 
+            - needs a planefinder based on current depth, can this be used for the FS planefinder? Planefinder based on an arbitrary property of the dots.
+                - can generalize to finding new surface of balls? common algo is finding for a characteristic among a local group of analysis points with locations defined by (x,y).
 3. Saturation
     - requires rain timer and button or equiv test mechanism
-4. Failure plane finding and extrapolation
 5. Trees and other local point modifiers (proximity modifier object class, usable for drains, trees, roads, etc.)
     - proximity method returns all analysis points within a radius
     - scale effect by distance 
@@ -47,6 +49,7 @@ DONE:
 √ Set surface as only physics chain/bedrock separate chain is problematic
 √ Still a fair number of balls killed when running over sharply convex obstacles
     - can be fixed by killing when below lowest adjacent point, rather than interpolation between (note: fixed interpolation routine instead :) ).
-√. Analysis point properties
+√ Analysis point properties
     √ requires topographic slope
-√. Analysis point graphics
+√ Analysis point graphics
+√ Failure plane finding and extrapolation

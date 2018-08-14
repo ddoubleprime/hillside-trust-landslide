@@ -141,7 +141,7 @@ playState.prototype = {
         
 
         
-        this.pointsInArea(100);
+        this.pointsInArea(500);
         
         /* CREATE: TIMING */
         ti.start();
@@ -400,7 +400,7 @@ playState.prototype = {
             } else {
 
             // find indices of nearest 2 x-points to xi
-            idxout[1] = x_pts.findIndex( function(x) { return x >= xi });
+            idxout[1] = x_pts.findIndex( function(x) { return x >= xi } );
             idxout[0] = idxout[1]-1; 
 
         } // if xi
@@ -419,7 +419,6 @@ playState.prototype = {
         var y1 = this.interp1(x_arr,y_arr,x1);
         
         var slp = (y2-y1)/(x2-x1);
-        console.log('slope: ' + slp)
         return slp;
         
     },
@@ -472,16 +471,12 @@ playState.prototype = {
  
     doLandslide: function() {
         
-        var ls_pos_x = Math.random()*worldW;
-        // use the landslide_shovel to get the "failure plane"
-        var post_ls_surface = this.applyShovel(landslide_shovel,ls_pos_x,x_axis,soil_surface);
-        
-        
+        var slide_thickness = this.failurePlane(x_axis,dots,10);
+
+        var post_ls_surface = this.arrayAdd(soil_surface,slide_thickness,-1);
         // base of slide body needs to be above bedrock!
         post_ls_surface = this.arrayMax(post_ls_surface,bedrock_surface);
-        
-        // use old and new in the changed section as top and bottom for a new graphics body
-        var slide_thickness = this.arrayAdd(soil_surface,post_ls_surface,-1);
+
         slide_thickness = this.arrayThresh(slide_thickness,0.2*Math.max.apply(Math,slide_thickness));
         
         // update the soil surface using these points (as normal)
@@ -489,16 +484,15 @@ playState.prototype = {
         this.updateLandscapeGraphics();
         
         // need the x-range of the body points (nonzero elements in thresholded thickness.)
-        var slide_area_l = slide_thickness.findIndex(this.checkNonZero);
-        var slide_thick_local = slide_thickness.filter(this.checkNonZero);
-        var slide_area_r = slide_area_l+slide_thick_local.length;
-                
-        var slide_base_padded = this.arrayScale(post_ls_surface.slice(slide_area_l,slide_area_r),1,0.001);
+        var slide_area_l = 0;
+        //var slide_thick_local = slide_thickness.filter(this.checkNonZero);
+        var slide_area_r = x_axis.length-1;
+            
+        var slide_base_padded = this.arrayScale(post_ls_surface,1,0.001);
         
         // before passing the base array to slidebpodytoballs, need to isolate the part of the body that is above the bedrock surface
-        ballsize = 2;  // px
-            
-        var newballs = this.slideBodyToBalls( slide_thick_local,slide_base_padded,slide_area_l,slide_area_r, ballsize );
+        var ballsize = 2;  // px
+        var newballs = this.slideBodyToBalls( slide_thickness,slide_base_padded,slide_area_l,slide_area_r, ballsize );
         
         // add new balls to balls array
         active_ls_balls = active_ls_balls.concat(newballs);
@@ -544,22 +538,20 @@ playState.prototype = {
         var x_loc = x_axis.slice(lIdx,rIdx);
         var x_loc_canvas = this.arrayScale(x_loc,dx_canvas,0);
         var y_base_loc_canvas = this.arrayScale(arrB,dy_canvas,worldH-2);
-        
+
         // iterate along x axis at a spacing equal to (or very slightly greater than) the desired physics body size
         // at each x-position, iterate at increments of y-body-size from base to surface
-        // if surface is lower than the next body increment, put a smaller body in that space
-        // return the array that contains the bodies for use in adding sprites to them later
+        // return the array that contains the bodies 
         var ball_container = [];
-        var i_dx = (2*ballsize+0.01)/dx_canvas;
+        var i_dx = (2*ballsize+0.01)/dx_canvas;        
         for (var i = x_axis[lIdx]; i <= x_axis[rIdx]-i_dx; i+=i_dx )
             {
+
                 var ymin = this.interp1(x_loc,arrB,i);
                 var ymax = this.interp1(x_loc,ls_surface,i);
                 var jdy = (2*ballsize+0.01)/dy_canvas;
-                
                 for (var j = ymin-jdy; j <= ymax; j-=jdy) {
                     var bx = i*dx_canvas, by = worldH + j*dy_canvas;
-                    
                     var ball = g.add.sprite(bx,by,'water');
                     ball.width = 2*ballsize; ball.height = 2*ballsize;
                     ball.tint = soilclr;
@@ -606,6 +598,14 @@ playState.prototype = {
         obj.height = obj.width * hwr;
         
         return obj
+    },
+
+    deg2Rad: function (val) {
+        return val * Math.PI / 180;
+    },
+
+    rad2Deg: function (val) {
+        return val * 180 / Math.PI;;
     },
         
     updateLandscapeGraphics: function() {
@@ -736,8 +736,6 @@ playState.prototype = {
         for (var i = 0; i < numPts; i++) {
             var xp = Math.random()*worldW/dx_canvas;
             var zp = this.randomZPoint(xp);
-            console.log(xp);
-            console.log(zp);
             this.addDotToGroup(xp*dx_canvas, worldH+zp*dy_canvas);
 
         }
@@ -759,17 +757,17 @@ playState.prototype = {
 
           dot.x = xpoint;
           dot.y = zp;
-          dot.phi = this.deg2Rad(26);
+          dot.phi = this.deg2Rad(15);
     
           dot.theta = Math.atan(Math.abs(slope)); // theta in RADIANS
           dot.saturation=0.5;
           dot.satDepth=0;
           dot.depth=depth;
-          dot.cohesion=1000;
+          dot.cohesion=0;
           dot.FS=this.FScalc(dot);
 
-          dots.push(dot);
-                    console.log(dot)
+          dots.push(dot); // push to global dots array
+        //            console.log(dot)
           return zp;
             
         } // if
@@ -784,21 +782,58 @@ playState.prototype = {
         var dotscale = 5;
         dot.beginFill(dotcolor, 1);
         dot.drawCircle(x, z , dotscale);
-
+        // scale color to FS and size to saturation
         dotGroup.add(dot);
     },
     
     FScalc: function (point) {
         return ( (point.cohesion + rho_r-point.saturation*rho_w)*grav*Math.cos(point.theta)*Math.tan(point.phi)*point.depth ) / (rho_r*grav*point.depth*Math.sin(point.theta));
     },
+    
+    failurePlane: function (xarr,points,wdw) {
+    /*This function, given the subset of ground test points that are failing, determines whether enough nearby points are failing to interpolate a landslide
+ surface across them. It returns an array of size(x_axis) with the depth
+ of the failure plane in the appropriate elements, or zero wherethere is no failure.
 
-    deg2Rad: function (val) {
-        return val * Math.PI / 180;
-    },
+ inputs:
+     points: array of analysis point objects
+     x_axis: x-coordinates of ground surface points
+ returns:
+     hx: array of size(x_axis) with depth of failure surface at each surface x-coordinate
+ */        
+ 
+    
+    // create the array that stores fail depths along the x axis
+    var hx = Array(xarr.length); hx.fill(0);
+    var dpRunning, npt, xi, failH;
+        
+    for (var i=0; i<xarr.length; i++) {
+        // find the failing soil points that lie within the range between the
+        // x_axis points to the right and left of this one
+        
+        xi = xarr[i]; 
+        dpRunning = 0;
+        npt = 0;
+        for (var j=0; j<points.length; j++) {
+            
+            if (points[j].x >= xi-0.5*wdw && points[j].x <= xi+0.5*wdw && points[j].FS < 1) {
+                npt++;
+                dpRunning += dots[j].depth;
+            }
+            
+        } // for j
 
-    rad2Deg: function(val){
-        return val * 180 / Math.PI;;
-    },
+        if (npt > 0) {
+            hx[i] = dpRunning / npt;
+        }
+    }     // for i
+        return hx;
+    
+},
+    
+    
+    
+
 
     
 /* RENDER */
