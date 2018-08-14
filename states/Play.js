@@ -18,6 +18,8 @@ var rho_w = 1000;
 var grav = 9.81;
 
 var dots = [];
+var dotGroup;
+var showdotmode = true;
 
 var ti, tiEvent, timeRate = 10000;  // ms per real-world time unit
 var timeKeeper, nowTime, worldTime = 0;
@@ -66,7 +68,9 @@ playState.prototype = {
         shovelButton.scale.setTo(0.025, 0.025);
         dumpButton = g.add.button(worldW-80, 20, 'dumptruck', this.toggleDumpMode, this);
         dumpButton.scale.setTo(0.25, 0.25);
-        
+                
+        dotGroup = g.add.group();
+
         adding_shovel = new this.Shovel(3,-2); // (w,d)
         digging_shovel = new this.Shovel(2,2);
         landslide_shovel = new this.Shovel(5,15)
@@ -117,7 +121,7 @@ playState.prototype = {
         soil_surface = this.arrayScale(bedrock_surface,1,Hr);
 
         // assign physics bodies and properties        
-        g.physics.box2d.enable(soil_graphic); // not necessary - make surface a free body
+        g.physics.box2d.enable(soil_graphic); // not necessary - make surface a free body?
 
         y_base_canvas = this.arrayScale(y_base,dy_canvas,worldH);
         
@@ -137,7 +141,7 @@ playState.prototype = {
         
 
         
-        this.randomZPoint(50);
+        this.pointsInArea(100);
         
         /* CREATE: TIMING */
         ti.start();
@@ -247,14 +251,14 @@ playState.prototype = {
     
     arrayAdd: function(arr1,arr2,sign){        
         // adds arrays of the same length
-        // elementwise, or subtracts array2 from array1
+        // elementwise, or subtracts array2 from array1 if sign is negative
         // and returns result as a new array  
         if (arr1.length == arr2.length){
             
             var xa = Array(arr1.length);
 
             for (var i=0;i<arr1.length;i++) {
-                xa[i] = arr2[i]*sign + arr1[i];
+                xa[i] = arr2[i]*Math.sign(sign) + arr1[i];
             }
 
         return xa; }
@@ -417,7 +421,6 @@ playState.prototype = {
         var slp = (y2-y1)/(x2-x1);
         console.log('slope: ' + slp)
         return slp;
-        
         
     },
     
@@ -611,7 +614,9 @@ playState.prototype = {
         
         soil_surface_canvas = this.arrayScale(soil_surface,dy_canvas,worldH);
         this.drawgraphic(soil_graphic,bot_pts,this.two1dto2d(x_axis_canvas,soil_surface_canvas),soilclr);
-
+        
+        //if(showdotmode){
+        g.world.bringToTop(dotGroup);
         g.world.bringToTop(bedrock_graphic);
 
         var bodypoly = this.boxPolygonArray( x_axis_canvas, this.arrayMin(soil_surface_canvas,bedrock_surface_canvas) );
@@ -621,8 +626,6 @@ playState.prototype = {
 
         changeFlag = false;
     },
-    
-
     
     
 /* CALLBACKS and INPUT EVENTS */    
@@ -694,8 +697,6 @@ playState.prototype = {
     },
     
     
-    
-    
 /* CONSTRUCTORS */
     
     Shovel: function(win,din){
@@ -728,22 +729,19 @@ playState.prototype = {
     },
     
     
-    
 /* ANALYSIS POINTS */
     
     pointsInArea: function (numPts) {
 
         for (var i = 0; i < numPts; i++) {
-            var xp = Math.random()*worldW;
-            //console.log(xp);
+            var xp = Math.random()*worldW/dx_canvas;
             var zp = this.randomZPoint(xp);
-            //console.log(xp);
-            //console.log(zp);
-            this.addDotToGroup(xp, zp);
+            console.log(xp);
+            console.log(zp);
+            this.addDotToGroup(xp*dx_canvas, worldH+zp*dy_canvas);
 
         }
     },
-    
     
     randomZPoint: function (xpoint) {
       // interpolate y-bounds from soil and bedrock surface arrays
@@ -777,23 +775,17 @@ playState.prototype = {
         } // if
     },
     
-    
     addDotToGroup: function(x,z) {
 
         var dot = g.add.graphics(0, 0);
             // graphics.lineStyle(2, 0xffd900, 1);
 
-        dot.beginFill(0x0000FF, 1);
-        dot.drawCircle(x, z , 4);
+        var dotcolor = 0x0000FF;
+        var dotscale = 5;
+        dot.beginFill(dotcolor, 1);
+        dot.drawCircle(x, z , dotscale);
 
-        if(this.showdotmode){
-          g.world.bringToTop(dot);
-        }else{
-          g.world.bringToTop(this.graphic);
-          g.world.bringToTop(this.bedrock);
-        }
-
-        this.dotGroup.add(dot);
+        dotGroup.add(dot);
     },
     
     FScalc: function (point) {

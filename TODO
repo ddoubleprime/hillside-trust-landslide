@@ -2,7 +2,8 @@ TODO:
 
 Implement:
 
-1. Analysis point placement
+1. Analysis point placement and update handling
+    - tied by depth to land surface except during landslide, when they stay in place during active LS and then are destroyed where the LS has ocurred.
 3. Saturation
     - requires rain timer and button or equiv test mechanism
 4. Failure plane finding and extrapolation
@@ -48,3 +49,4 @@ DONE:
     - can be fixed by killing when below lowest adjacent point, rather than interpolation between (note: fixed interpolation routine instead :) ).
 √. Analysis point properties
     √ requires topographic slope
+√. Analysis point graphics
