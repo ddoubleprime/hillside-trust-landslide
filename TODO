@@ -3,10 +3,9 @@ TODO:
 Implement:
 
 1. Analysis point placement
-2. Analysis point properties
-    - requires topographic slope
 3. Saturation
     - requires rain timer and button or equiv test mechanism
+4. Failure plane finding and extrapolation
 5. Trees and other local point modifiers (proximity modifier object class, usable for drains, trees, roads, etc.)
     - proximity method returns all analysis points within a radius
     - scale effect by distance 
@@ -19,6 +18,12 @@ Implement:
 10. Disable dragging while in shovel or dump mode
 11. Disallow digging of soil below bedrock surface by shovels?
 12. Change thickness slider to a +/- soil everywhere button that adds a fixed increment per click    
+13. Juice! 
+    - shovel scrape in soil, clink on bedrock
+    - truck beep beep on select, then whump on dump
+    - landslide rumble
+    - rain sound and thunder when raining
+14. Get physics time? Can slow clock to match event time
 
 
 Fix:
@@ -41,3 +46,5 @@ DONE:
 √ Set surface as only physics chain/bedrock separate chain is problematic
 √ Still a fair number of balls killed when running over sharply convex obstacles
     - can be fixed by killing when below lowest adjacent point, rather than interpolation between (note: fixed interpolation routine instead :) ).
+√. Analysis point properties
+    √ requires topographic slope

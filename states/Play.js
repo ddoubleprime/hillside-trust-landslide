@@ -13,6 +13,12 @@ var soil_thickness;
 var HrField = document.getElementById("Hreg");	// pull reg height from HTML slider
 var Hr = Number(HrField.value);
 
+var rho_r = 1500;
+var rho_w = 1000;
+var grav = 9.81;
+
+var dots = [];
+
 var ti, tiEvent, timeRate = 10000;  // ms per real-world time unit
 var timeKeeper, nowTime, worldTime = 0;
 var timeDisplay;
@@ -131,7 +137,7 @@ playState.prototype = {
         
 
         
-        
+        this.randomZPoint(50);
         
         /* CREATE: TIMING */
         ti.start();
@@ -192,7 +198,7 @@ playState.prototype = {
         
         if (activeLS) {
             this.checkBalls( active_ls_balls,x_axis_canvas, this.arrayMin(soil_surface_canvas,bedrock_surface_canvas) );
-            if (this.isEmpty(active_ls_balls)) {activeLS = false};
+            if (this.isEmpty(active_ls_balls)) {activeLS = false}
         }
 
     },
@@ -398,10 +404,19 @@ playState.prototype = {
         return idxout;
     },
     
-    getRegionalSlope: function() {
-        // input an array of evenly-spaced points and a grid spacing, and parameter windowsize (phys. units)
-        // returns the local slope averaged over the windowsize
+    getRegionalSlope: function(x_arr,y_arr,xpt,wdw) {
+        // input an x,y array pair defining evenly-spaced points, a location along x at which to compute the slope, and the parameter windowsize defining the averaging window (x units)
+        // returns the local slope averaged over the range xpt±(1/2)*windowsize
+        // points outside of edges will be extrapolated linearly from the two endmost points of y
+        var x2 = xpt+0.5*wdw;
+        var x1 = xpt-0.5*wdw;
         
+        var y2 = this.interp1(x_arr,y_arr,x2);
+        var y1 = this.interp1(x_arr,y_arr,x1);
+        
+        var slp = (y2-y1)/(x2-x1);
+        console.log('slope: ' + slp)
+        return slp;
         
         
     },
@@ -719,7 +734,7 @@ playState.prototype = {
     pointsInArea: function (numPts) {
 
         for (var i = 0; i < numPts; i++) {
-            var xp = g.rnd.between(0, worldW );
+            var xp = Math.random()*worldW;
             //console.log(xp);
             var zp = this.randomZPoint(xp);
             //console.log(xp);
@@ -731,33 +746,35 @@ playState.prototype = {
     
     
     randomZPoint: function (xpoint) {
-      var dot = [];
-
       // interpolate y-bounds from soil and bedrock surface arrays
+      // inputs/returns physical grid units
+      var topY = this.interp1(x_axis,soil_surface,xpoint);    
+      var botY = this.interp1(x_axis,bedrock_surface,xpoint);
         
-        
-        
-      var slope =  this.findSlope(topR, this.toppoints, 1);
-        
-      var zp = g.rnd.between(TopXY[1], BotXY[1]);
-      var width = zp - this.toppoints[topR][1];
-      
-      dot.x = xpoint;
-      dot.y = zp;
-      
-      dot.theta = this.rad2Deg(Math.atan(slope));
-      dot.saturation=0;
-      dot.satDepth=0;
-      dot.sH=width;
-      dot.cohesion=this.Coh;
-      dot.FS=this.FScalc(dot);
+      if (topY - botY <= 0) {return null}
+        else {
+          var dot = [];
+          var zp = Math.random()*(topY-botY)+botY;
+          var depth = (topY-zp);
+          var windowsz = 10*depth;
+          var slope =  this.getRegionalSlope(x_axis, soil_surface, xpoint, windowsz);
 
+          dot.x = xpoint;
+          dot.y = zp;
+          dot.phi = this.deg2Rad(26);
+    
+          dot.theta = Math.atan(Math.abs(slope)); // theta in RADIANS
+          dot.saturation=0.5;
+          dot.satDepth=0;
+          dot.depth=depth;
+          dot.cohesion=1000;
+          dot.FS=this.FScalc(dot);
 
-      this.dots.push(dot);
-
-
-      return zp;
-
+          dots.push(dot);
+                    console.log(dot)
+          return zp;
+            
+        } // if
     },
     
     
@@ -780,7 +797,7 @@ playState.prototype = {
     },
     
     FScalc: function (point) {
-        return ( (point.cohesion + rho_r-point.saturation*rho_w)*grav*Math.cos(this.deg2Rad(point.theta))*Math.tan(this.deg2Rad(this.phi))*point.sH ) / (rho_r*grav*point.sH*Math.sin(this.deg2Rad(point.theta)));
+        return ( (point.cohesion + rho_r-point.saturation*rho_w)*grav*Math.cos(point.theta)*Math.tan(point.phi)*point.depth ) / (rho_r*grav*point.depth*Math.sin(point.theta));
     },
 
     deg2Rad: function (val) {
@@ -795,7 +812,7 @@ playState.prototype = {
 /* RENDER */
     
     render: function () {
-
+/*
        g.debug.box2dWorld();
         // Default color is white
         g.debug.body(soil_graphic);
@@ -806,7 +823,7 @@ playState.prototype = {
         var red = Math.floor(red);
         var blue = 255 - red;
         g.debug.body(house, 'rgb('+red+',0,'+blue+')');
-  
+  */
     },
     
 
