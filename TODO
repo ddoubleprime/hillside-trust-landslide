@@ -32,6 +32,7 @@ Implement:
 Fix:
 
 1. Balls generated on zero-thickness soil during LS
+    - likely due to analysis points persisting below bedrock
 3. Are killed bodies that exit L side removed properly from the balls array?
 
 

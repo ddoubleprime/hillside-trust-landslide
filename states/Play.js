@@ -609,6 +609,21 @@ playState.prototype = {
     rad2Deg: function (val) {
         return val * 180 / Math.PI;;
     },
+    
+    rgbToHex: function (rgb) { 
+        var hex = Number(rgb).toString(16);
+        if (hex.length < 2) {
+            hex = "0" + hex;
+        }
+        return hex;
+    },
+    
+    fullColorHex: function(r,g,b) {   
+      var red = this.rgbToHex(r);
+      var green = this.rgbToHex(g);
+      var blue = this.rgbToHex(b);
+      return '0x'+red+green+blue;
+    },
         
     updateLandscapeGraphics: function() {
         // derive thickness array
@@ -737,7 +752,7 @@ playState.prototype = {
 
         for (var i = 0; i < numPts; i++) {
             var xp = Math.random()*worldW/dx_canvas;
-            var zp = this.randomZPoint(xp);
+            this.randomZPoint(xp);
             this.addDotToGroup(dots[i]);
 
         }
@@ -759,7 +774,7 @@ playState.prototype = {
 
           dot.x = xpoint;
           dot.y = zp;
-          dot.phi = this.deg2Rad(15);
+          dot.phi = this.deg2Rad(26);
     
           dot.theta = Math.atan(Math.abs(slope)); // theta in RADIANS
           dot.saturation=0.5;
@@ -780,26 +795,30 @@ playState.prototype = {
     updateDotGfx: function (points,dotgp) {
         // assumes gfx dot group and points array are in the same order and same size.
         // so careful with sorting.
+        
+        dotgp.removeAll(true,true,false)
+
         for (var i=0; i<points.length; i++)  {
 
-            if (points[i].y >= this.interp1(x_axis,soil_surface,points[i].x)) {
-                // kill
-                dotgp.kill(i); 
-            } else if (points[i].y <= this.interp1(x_axis,bedrock_surface,points[i].x)) {
-                dotgp.kill(i);      
-                                                   // kill
-            } else { 
-                var pt = dotgp.getChildAt(i);
-                pt.position.y = points[i].y * dy_canvas + worldH;          
-                pt.position.x = points[i].x * dx_canvas;
-                console.log(pt)
-                pt.scale = 5;//Math.random()*5;
-                pt.fillColor = 0x000000;
-                console.log(points[i].x,pt.position.x,pt.position.y)
-
-            }
-
-            
+//            if (points[i].y >= this.interp1(x_axis,soil_surface,points[i].x)) {
+//                // kill
+//                //dotgp.kill(i); 
+//                console.log('overtopkill')
+//            } else if (points[i].y <= this.interp1(x_axis,bedrock_surface,points[i].x)) {
+//                //dotgp.kill(i);      
+//                console.log('underbottomkill')
+//                                                   // kill
+//            } else { 
+//                var pt = dotgp.getChildAt(i);
+//                                console.log(points[i].x,pt.x,pt.y)
+//
+//                pt.y = points[i].y * dy_canvas + worldH;          
+//                console.log(pt)
+//                pt.scale = 5;//Math.random()*5;
+//                pt.fillColor = 0x000000;
+//
+//            }
+            this.addDotToGroup(points[i]);
         }
     },
     
@@ -876,8 +895,15 @@ playState.prototype = {
           points[i].cohesion=0; // calculated based on proximity to e.g. trees
             
           points[i].FS=this.FScalc(points[i]);
-          points[i].color = 0x0000FF;
-          points[i].scale = 5;  // these last 2 will be derived from FS and saturation, respectively        
+            
+          var ptcolorR = Math.round(Math.min(1/Math.exp(points[i].FS-1),1) * 255);
+          var ptcolorG = 0;
+          var ptcolorB = 255-ptcolorR;
+          points[i].color = this.fullColorHex(ptcolorR,ptcolorG,ptcolorB);
+            if (points[i].FS < 1) {points[i].color = 0x000000}
+          points[i].scale = points[i].saturation*5;             
+            if (points[i].scale < 1) {points[i].scale = 1}
+            // these last 2 will be derived from FS and saturation, respectively        
         }
         
           this.updateDotGfx(points,dotGroup);
