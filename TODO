@@ -31,7 +31,7 @@ Implement:
 
 Fix:
 
-1. Slide bodies not being converted to balls when within a short range of the right boundary
+1. Balls generated on zero-thickness soil during LS
 3. Are killed bodies that exit L side removed properly from the balls array?
 
 
@@ -53,3 +53,5 @@ DONE:
     √ requires topographic slope
 √ Analysis point graphics
 √ Failure plane finding and extrapolation
+√ Slide bodies not being converted to balls when within a short range of the right boundary
+    - (problem does not present now that we don't use the LS shovel)

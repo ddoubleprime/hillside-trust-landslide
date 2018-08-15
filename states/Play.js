@@ -3,7 +3,7 @@ var bedrock;
 var x_axis;
 var soil_graphic,bedrock_graphic;
 var bot_pts, top_pts;
-var soilclr = 0x7C450D, rockclr = 0x003366;
+var soilclr = 0x7C450D, rockclr = 0x333333;
 var dx = 1, VE = 3;     // x-spacing in grid units, vertical exaggeration
 var worldW = 603, worldH = 504;
 var y_base, soil_surface, bedrock_surface;
@@ -128,8 +128,9 @@ playState.prototype = {
         // make canvas-unit coordinate pairs for drawing
         bot_pts = this.two1dto2d(x_axis_canvas,y_base_canvas);
         
+
         this.updateLandscapeGraphics();
-        
+        this.pointsInArea(500);        
         
         // make canvas-unit coordinate pairs for drawing and draw bedrock graphic
         top_pts = this.two1dto2d(x_axis_canvas,bedrock_surface_canvas);
@@ -141,7 +142,6 @@ playState.prototype = {
         
 
         
-        this.pointsInArea(500);
         
         /* CREATE: TIMING */
         ti.start();
@@ -197,6 +197,7 @@ playState.prototype = {
          if (changeFlag == true) {
              
              this.updateLandscapeGraphics();
+             this.updateAnalysisPoints(dots);
             
          }   // changeFlag
         
@@ -482,6 +483,7 @@ playState.prototype = {
         // update the soil surface using these points (as normal)
         soil_surface = post_ls_surface;        
         this.updateLandscapeGraphics();
+        this.updateAnalysisPoints(dots);
         
         // need the x-range of the body points (nonzero elements in thresholded thickness.)
         var slide_area_l = 0;
@@ -537,7 +539,7 @@ playState.prototype = {
         var ls_surface_canvas = this.arrayScale(ls_surface,dy_canvas,worldH);
         var x_loc = x_axis.slice(lIdx,rIdx);
         var x_loc_canvas = this.arrayScale(x_loc,dx_canvas,0);
-        var y_base_loc_canvas = this.arrayScale(arrB,dy_canvas,worldH-2);
+        var y_base_loc_canvas = this.arrayScale(arrB,dy_canvas,worldH);
 
         // iterate along x axis at a spacing equal to (or very slightly greater than) the desired physics body size
         // at each x-position, iterate at increments of y-body-size from base to surface
@@ -736,7 +738,7 @@ playState.prototype = {
         for (var i = 0; i < numPts; i++) {
             var xp = Math.random()*worldW/dx_canvas;
             var zp = this.randomZPoint(xp);
-            this.addDotToGroup(xp*dx_canvas, worldH+zp*dy_canvas);
+            this.addDotToGroup(dots[i]);
 
         }
     },
@@ -765,7 +767,9 @@ playState.prototype = {
           dot.depth=depth;
           dot.cohesion=0;
           dot.FS=this.FScalc(dot);
-
+          dot.color = 0x0000FF;
+          dot.scale = 5;  // these last 2 will be derived from FS and saturation, respectively
+            
           dots.push(dot); // push to global dots array
         //            console.log(dot)
           return zp;
@@ -773,15 +777,39 @@ playState.prototype = {
         } // if
     },
     
-    addDotToGroup: function(x,z) {
+    updateDotGfx: function (points,dotgp) {
+        // assumes gfx dot group and points array are in the same order and same size.
+        // so careful with sorting.
+        for (var i=0; i<points.length; i++)  {
 
+            if (points[i].y >= this.interp1(x_axis,soil_surface,points[i].x)) {
+                // kill
+                dotgp.kill(i); 
+            } else if (points[i].y <= this.interp1(x_axis,bedrock_surface,points[i].x)) {
+                dotgp.kill(i);      
+                                                   // kill
+            } else { 
+                var pt = dotgp.getChildAt(i);
+                pt.position.y = points[i].y * dy_canvas + worldH;          
+                pt.position.x = points[i].x * dx_canvas;
+                console.log(pt)
+                pt.scale = 5;//Math.random()*5;
+                pt.fillColor = 0x000000;
+                console.log(points[i].x,pt.position.x,pt.position.y)
+
+            }
+
+            
+        }
+    },
+    
+    addDotToGroup: function(point) {
+        
         var dot = g.add.graphics(0, 0);
             // graphics.lineStyle(2, 0xffd900, 1);
 
-        var dotcolor = 0x0000FF;
-        var dotscale = 5;
-        dot.beginFill(dotcolor, 1);
-        dot.drawCircle(x, z , dotscale);
+        dot.beginFill(point.color, 1);
+        dot.drawCircle(point.x*dx_canvas, worldH+point.y * dy_canvas, point.scale);
         // scale color to FS and size to saturation
         dotGroup.add(dot);
     },
@@ -805,7 +833,7 @@ playState.prototype = {
     
     // create the array that stores fail depths along the x axis
     var hx = Array(xarr.length); hx.fill(0);
-    var dpRunning, npt, xi, failH;
+    var dpRunning, npt, xi;
         
     for (var i=0; i<xarr.length; i++) {
         // find the failing soil points that lie within the range between the
@@ -831,7 +859,31 @@ playState.prototype = {
     
 },
     
-    
+    updateAnalysisPoints: function (points) {
+        for (var i=0; i<points.length; i++)  {
+          //dot.depth (static)
+          //dot.x     (static)
+          var topY = this.interp1(x_axis,soil_surface,points[i].x);    
+          points[i].y = topY - points[i].depth;
+          points[i].phi = this.deg2Rad(26);
+          
+          var windowsz = 10*points[i].depth;
+          var slope =  this.getRegionalSlope(x_axis, soil_surface, points[i].x, windowsz);
+            
+          points[i].theta = Math.atan(Math.abs(slope)); // theta in RADIANS
+          points[i].saturation=0.5; // calculated by rain response function
+          points[i].satDepth=0; // calculated by rain response
+          points[i].cohesion=0; // calculated based on proximity to e.g. trees
+            
+          points[i].FS=this.FScalc(points[i]);
+          points[i].color = 0x0000FF;
+          points[i].scale = 5;  // these last 2 will be derived from FS and saturation, respectively        
+        }
+        
+          this.updateDotGfx(points,dotGroup);
+                g.world.bringToTop(dotGroup);
+
+    },
     
 
 
