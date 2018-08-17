@@ -2,11 +2,9 @@ TODO:
 
 Implement:
 
-1. Analysis point placement and update handling
-
-        - is it worth having 2 behaviors? How about redotting where thickened (below existing points)? 
-            - needs a planefinder based on current depth, can this be used for the FS planefinder? Planefinder based on an arbitrary property of the dots.
-                - can generalize to finding new surface of balls? common algo is finding for a characteristic among a local group of analysis points with locations defined by (x,y).
+2. Analysis point fade and reimposed upon changes to soil thickness
+    - allow "sectoring" so only changed sectors are redotted
+    - take a horizontally-averaged soil moisture z-profile through the changed sector and use it to repopulate redotted sectors
 3. Saturation
     - requires rain timer and button or equiv test mechanism
 5. Trees and other local point modifiers (proximity modifier object class, usable for drains, trees, roads, etc.)
@@ -15,9 +13,7 @@ Implement:
 6. River object. Where the bedrock is at a local minimum, uses a shovel to dig soil to zero there and attaches a kill zone for physics bodies that reach the "river".
 7. Display scale bars H and V
 8. Balls back to soil after not moving for a certain time
-9. Analysis point fade and reimposed upon changes to soil thickness
-    - allow "sectoring" so only changed sectors are redotted
-    - take a horizontally-averaged soil moisture z-profile through the changed sector and use it to repopulate redotted sectors
+9. Test planefinder based on max depth instead of mean
 10. Disable dragging while in shovel or dump mode
 12. Change thickness slider to a +/- soil everywhere button that adds a fixed increment per click    
 13. Juice! 
@@ -31,9 +27,6 @@ Implement:
 
 Fix:
 
-1. Balls generated on zero-thickness soil during LS
-    - likely due to analysis points persisting below bedrock?
-    - or bug in the thresholder/planefinder
 3. Are killed bodies that exit L side removed properly from the balls array?
 
 
@@ -65,4 +58,17 @@ DONE:
 √ Slide bodies not being converted to balls when within a short range of the right boundary
     - (problem does not present now that we don't use the LS shovel)
 √ Disallow digging of soil below bedrock surface by shovels?
-√ Dots stay in place relative to soil body (more intuitively physical) and then are destroyed where the LS has ocurred or surfave dug.
+√ Analysis point placement and update handling
+    - Dots stay in place relative to soil body (more intuitively physical) and then are destroyed where the LS has ocurred or surfave dug.
+√ Balls generated on zero-thickness soil during LS
+    - likely due to analysis points persisting below bedrock?
+    - or bug in the thresholder/planefinder
+        (was actually unenforced negative soil thicknesses in the doLandslide function)
+        
+        
+DEPRECATED NOTES
+
+
+        - is it worth having 2 behaviors? How about redotting where thickened (below existing points)? 
+            - needs a planefinder based on current depth, can this be used for the FS planefinder? Planefinder based on an arbitrary property of the dots.
+                - can generalize to finding new surface of balls? common algo is finding for a characteristic among a local group of analysis points with locations defined by (x,y).

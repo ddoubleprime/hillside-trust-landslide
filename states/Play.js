@@ -7,7 +7,7 @@ var soilclr = 0x7C450D, rockclr = 0x333333;
 var dx = 1, VE = 3;     // x-spacing in grid units, vertical exaggeration
 var worldW = 603, worldH = 504;
 var y_base, soil_surface, bedrock_surface;
-var surf_amp=20,surf_wavelength=50,surf_shift=-20;
+var surf_amp=20,surf_wavelength=50,surf_shift=-120;
 var dx_canvas, dy_canvas, x_axis_canvas, soil_surface_canvas;
 var soil_thickness;
 var HrField = document.getElementById("Hreg");	// pull reg height from HTML slider
@@ -201,9 +201,6 @@ playState.prototype = {
              
              this.updateLandscapeGraphics();
              this.updateAnalysisPoints(dots);
-             
-                     console.log(this.arrayAreaBetween(soil_surface,bedrock_surface,dx));
-
             
          }   // changeFlag
         
@@ -279,19 +276,21 @@ playState.prototype = {
         
     },
 
-    arrayThresh: function (arr,thrsh){
+    arrayThresh: function (arr,thrsh) {
 
         var xa = Array(arr.length);
+        var xi = [];
 
         for (var i=0;i<arr.length;i++) {
             if (arr[i] < thrsh) {
                 xa[i] = 0;
             } else {
                 xa[i] = arr[i];
+                xi.push(i);
             }
         }
 
-        return xa;
+        return [xa,xi];
 
 },
     
@@ -485,13 +484,16 @@ playState.prototype = {
  
     doLandslide: function() {
         
-        var slide_thickness = this.failurePlane(x_axis,dots,10);
+        var slide_thickness = this.failurePlane(x_axis,dots,5);
 
         var post_ls_surface = this.arrayAdd(soil_surface,slide_thickness,-1);
         // base of slide body needs to be above bedrock!
         post_ls_surface = this.arrayMax(post_ls_surface,bedrock_surface);
-
-        slide_thickness = this.arrayThresh(slide_thickness,0.2*Math.max.apply(Math,slide_thickness));
+        // correct thickness based on corrected surface
+        slide_thickness = this.arrayAdd(soil_surface,post_ls_surface,-1)
+        
+        var trash;
+        [slide_thickness, trash] = this.arrayThresh(slide_thickness,0.2*Math.max.apply(Math,slide_thickness));
         
         // update the soil surface using these points (as normal)
         soil_surface = post_ls_surface;        
@@ -785,8 +787,19 @@ playState.prototype = {
     
     pointsInArea: function (numPts) {
 
+        // option 1. filter x_array by thickness threshold, then pick one random index*dx + a random*0.5dx jitter. 2 calls to Math.random() per point.
+        var trash, xi;
+        [trash,xi] = this.arrayThresh(soil_thickness,0);
+        console.log(trash)
+        console.log(xi)
+        
         for (var i = 0; i < numPts; i++) {
-            var xp = Math.random()*worldW/dx_canvas;
+            var jitter = Math.random()*dx;
+            var xval = x_axis[ xi[Math.floor( Math.random()*(xi.length) )] ];
+            var xp = xval + jitter;  // this needs to fall within the cells where thickness>0, and then all should work the same as before
+            
+            // option 2. ???
+            
             this.randomZPoint(xp);
             this.addDotToGroup(dots[i]);
 
@@ -804,7 +817,7 @@ playState.prototype = {
           var dot = [];
           var zp = Math.random()*(topY-botY)+botY;
           var depth = (topY-zp);
-          var windowsz = 10*depth;
+          var windowsz = 3*depth;
           var slope =  this.getRegionalSlope(x_axis, soil_surface, xpoint, windowsz);
 
           dot.x = xpoint;
@@ -854,42 +867,36 @@ playState.prototype = {
     },
     
     failurePlane: function (xarr,points,wdw) {
-    /*This function, given the subset of ground test points that are failing, determines whether enough nearby points are failing to interpolate a landslide
- surface across them. It returns an array of size(x_axis) with the depth
- of the failure plane in the appropriate elements, or zero wherethere is no failure.
+        /* This function, given the subset of ground test points that are failing, determines 
+        whether enough nearby points are failing to interpolate a landslide surface across them. It returns an array of size(x_axis) with the depth of the failure plane in the appropriate elements, or zero wherethere is no failure.
 
- inputs:
-     points: array of analysis point objects
-     x_axis: x-coordinates of ground surface points
- returns:
-     hx: array of size(x_axis) with depth of failure surface at each surface x-coordinate
- */        
- 
-    
-    // create the array that stores fail depths along the x axis
-    var hx = Array(xarr.length); hx.fill(0);
-    var dpRunning, npt, xi;
+        inputs: points: array of analysis point objects; x_axis: x-coordinates of ground surface points wdw: window around each column to count points
+        returns: hx: array of size(x_axis) with depth of failure surface at each surface x-coordinate */        
+        // create the array that stores fail depths along the x axis
         
-    for (var i=0; i<xarr.length; i++) {
-        // find the failing soil points that lie within the range between the
-        // x_axis points to the right and left of this one
-        
-        xi = xarr[i]; 
-        dpRunning = 0;
-        npt = 0;
-        for (var j=0; j<points.length; j++) {
-            
-            if (points[j].x >= xi-0.5*wdw && points[j].x <= xi+0.5*wdw && points[j].FS < 1) {
-                npt++;
-                dpRunning += dots[j].depth;
+        var hx = this.zeros(xarr.length);
+
+        var dpRunning, npt, xi;
+
+        for (var i=0; i<xarr.length; i++) {
+            // find the failing soil points that lie within the range defined by xi and wdw
+
+            xi = xarr[i]; 
+            dpRunning = 0;
+            npt = 0;
+            for (var j=0; j<points.length; j++) {
+
+                if (points[j].x >= xi-0.5*wdw && points[j].x <= xi+0.5*wdw && points[j].FS < 1) {
+                    npt++;
+                    dpRunning += dots[j].depth;
+                }
+
+            } // for j
+
+            if (npt > 2*soil_thickness[i]) {
+                hx[i] = dpRunning / npt;
             }
-            
-        } // for j
-
-        if (npt > 0) {
-            hx[i] = dpRunning / npt;
-        }
-    }     // for i
+        }     // for i
         return hx;
     
 },
