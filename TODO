@@ -3,7 +3,7 @@ TODO:
 Implement:
 
 1. Analysis point placement and update handling
-    - tied by depth to land surface except during landslide, when they stay in place during active LS and then are destroyed where the LS has ocurred.
+
         - is it worth having 2 behaviors? How about redotting where thickened (below existing points)? 
             - needs a planefinder based on current depth, can this be used for the FS planefinder? Planefinder based on an arbitrary property of the dots.
                 - can generalize to finding new surface of balls? common algo is finding for a characteristic among a local group of analysis points with locations defined by (x,y).
@@ -19,7 +19,6 @@ Implement:
     - allow "sectoring" so only changed sectors are redotted
     - take a horizontally-averaged soil moisture z-profile through the changed sector and use it to repopulate redotted sectors
 10. Disable dragging while in shovel or dump mode
-11. Disallow digging of soil below bedrock surface by shovels?
 12. Change thickness slider to a +/- soil everywhere button that adds a fixed increment per click    
 13. Juice! 
     - shovel scrape in soil, clink on bedrock
@@ -27,12 +26,14 @@ Implement:
     - landslide rumble
     - rain sound and thunder when raining
 14. Get physics time? Can slow clock to match event time
+15. Grading shovel that smooths an area
 
 
 Fix:
 
 1. Balls generated on zero-thickness soil during LS
-    - likely due to analysis points persisting below bedrock
+    - likely due to analysis points persisting below bedrock?
+    - or bug in the thresholder/planefinder
 3. Are killed bodies that exit L side removed properly from the balls array?
 
 
@@ -41,6 +42,13 @@ Sprite work:
 1. button states
 2. house less tall
 3. house physics poly to match shape
+
+Code style work:
+
+1. Deglobalize as much as possible
+2. Parameters to interface
+3. Make sure scoping is correct overall for modularity
+4. Implement modularity using prototype function and JSON in the playState definition
 
 
 DONE:
@@ -56,3 +64,5 @@ DONE:
 √ Failure plane finding and extrapolation
 √ Slide bodies not being converted to balls when within a short range of the right boundary
     - (problem does not present now that we don't use the LS shovel)
+√ Disallow digging of soil below bedrock surface by shovels?
+√ Dots stay in place relative to soil body (more intuitively physical) and then are destroyed where the LS has ocurred or surfave dug.
