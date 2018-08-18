@@ -2,8 +2,7 @@ TODO:
 
 Implement:
 
-3. Saturation
-    - requires rain timer and button or equiv test mechanism
+1. Saturation wetting front
 5. Trees and other local point modifiers (proximity modifier object class, usable for drains, trees, roads, etc.)
     - proximity method returns all analysis points within a radius
     - scale effect by distance 
@@ -24,6 +23,12 @@ Implement:
 
 Fix:
 
+1. Landslide planefinding or FS calc needs a confinement term, so points bouded by stable points on the downill side don't fail. Ball resurfacing will help with this.
+    - use slope of smallest chord projected across point as theta? 
+        - this will be awkward at the edges
+    - set slope window size based on horizontal distance to surface?
+        - need horz projection. use interp1 to interp x-value between z-points? (monotonicity likely to be a problem. would need all intercepts and pick nearest)
+    
 3. Are killed bodies that exit L side removed properly from the balls array?
 
 
@@ -63,7 +68,8 @@ DONE:
         (was actually unenforced negative soil thicknesses in the doLandslide function)
 √ Analysis point fade and reimposed upon changes to soil thickness
     - allow "sectoring" so only changed sectors are redotted
-
+√ Saturation
+    - requires rain timer and button or equiv test mechanism
         
         
 DEPRECATED NOTES

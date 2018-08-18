@@ -4,7 +4,7 @@ var x_axis;
 var soil_graphic,bedrock_graphic;
 var bot_pts, top_pts;
 var soilclr = 0x7C450D, rockclr = 0x333333;
-var dx = 1, VE = 3;     // x-spacing in grid units, vertical exaggeration
+var dx = 1, VE = 2;     // x-spacing in grid units, vertical exaggeration
 var worldW = 603, worldH = 504;
 var y_base, soil_surface, bedrock_surface;
 var surf_amp=20,surf_wavelength=50,surf_shift=0;
@@ -19,12 +19,15 @@ var grav = 9.81;
 
 var dots = [];
 var dotGroup;
-var ptDensity = 0.05;   // points per sq phys unit
+var ptDensity = 0.01;   // points per sq phys unit
 var showdotmode = true;
+
+var defaultCohesion = 1000, defaultSaturation = 0.5, defaultPhi = 24, slopeWindowFactor = 3;
 
 var ti, tiEvent, timeRate = 10000;  // ms per real-world time unit
 var timeKeeper, nowTime, worldTime = 0;
-var timeDisplay;
+var timeDisplay, rainDisplay, rainTime, rainStartTime;
+var nextQuery = 0, queryInterval = 200;     // in ms
         
 var physBoxTest;
 var box2d;
@@ -32,6 +35,7 @@ var box2d;
 var shovelMode = false;
 var dumpMode = false;
 var shovelButton, dumpButton;
+var rainFlag = false;
 var changeFlag = false;
 var activeLS = false;
 var active_ls_balls = [];
@@ -40,6 +44,8 @@ var adding_shovel, digging_shovel, landslide_shovel, active_shovel;
 var esckey;
 var slide_body;
 var lkey, hkey;
+
+
 var playState = function(game) {
 
 };
@@ -56,8 +62,9 @@ playState.prototype = {
         bedrock_graphic = g.add.graphics(0, 0);
         slide_body = g.add.graphics(0, 0);
         timeDisplay = g.add.text(5, 5, [], { fill: '#001122', font: '14pt Arial' });
+        rainDisplay = g.add.text(5, 30, [], { fill: '#FFDD22', font: '14pt Arial' });
         
-                // Set up handlers for mouse events
+        // Set up handlers for mouse events
         g.input.mouse.enabled = true
         g.input.onDown.add(this.mouseDragStart, this);
         g.input.addMoveCallback(this.mouseDragMove, this);
@@ -129,7 +136,6 @@ playState.prototype = {
         
         // make canvas-unit coordinate pairs for drawing
         bot_pts = this.two1dto2d(x_axis_canvas,y_base_canvas);
-        
 
         this.updateLandscapeGraphics();
         
@@ -141,12 +147,11 @@ playState.prototype = {
         
                 
         /* CREATE: PHYSICS */
-        house = this.newHouse();
-    
+        house = this.newHouse()
+        
         
         /* CREATE: TIMING */
         ti.start();
-            
     },
 
 
@@ -156,6 +161,33 @@ playState.prototype = {
         nowTime = ti.ms/timeRate;  // simulation world time
         timeDisplay.setText('Day: ' + Math.round(nowTime*10)/10);
 
+        // raining for testing
+        if (nowTime >= 1 && nowTime < 2) {        
+            rainDisplay.setText("It's Raining!");
+            rainDisplay.fill = '#0000FF';
+            if (rainFlag == false) {
+              rainStartTime = nowTime;
+            }
+            rainFlag = true;  
+            rainTime = nowTime - rainStartTime;
+            
+        } else { 
+            rainDisplay.setText("It's Sunny!") 
+            rainDisplay.fill = '#FFDD22';
+            if (rainFlag == true) {
+              rainTime = 0;
+            }
+            rainFlag = false;            
+        }
+        
+        if (ti.ms >= nextQuery) {
+            nextQuery += queryInterval;
+            
+            this.updateAnalysisPoints(dots);
+            
+        }
+        
+        
         // get new thickness value
         if (Hr != Number(HrField.value)) {
             var HrNew = Number(HrField.value);
@@ -509,14 +541,13 @@ playState.prototype = {
             
         var slide_base_padded = this.arrayScale(post_ls_surface,1,0.001);
         
-        // before passing the base array to slidebpodytoballs, need to isolate the part of the body that is above the bedrock surface
-        var ballsize = 2;  // px
+        // before passing the base array to slidebodytoballs, need to isolate the part of the body that is above the bedrock surface
+        var ballsize = 3;  // px
         var newballs = this.slideBodyToBalls( slide_thickness,slide_base_padded,slide_area_l,slide_area_r, ballsize );
         
         // add new balls to balls array
         active_ls_balls = active_ls_balls.concat(newballs);
         activeLS = true;
-        //this.drawSlideBody( slide_thick_local, post_ls_surface.slice(slide_area_l,slide_area_r),slide_area_l,slide_area_r );
         
     },
     
@@ -802,7 +833,6 @@ playState.prototype = {
             // get the area between. use the thresholded thickness and a zero-array, because the arrT and arrB might cross, and the area result would be biased by the negative differences
             var area = this.arrayAreaBetween(posThick,this.zeros(x_axis.length));
             var numPts = Math.round(ptDensity * area);
-                        console.log(area, numPts)
         
             for (var i = 0; i < numPts; i++) {
                 var jitter = Math.random()*dx;
@@ -830,25 +860,24 @@ playState.prototype = {
           var dot = [];
           var zp = Math.random()*(topY-botY)+botY;
           var depth = (topY-zp);
-          var windowsz = 3*depth;
+          var windowsz = Math.pow(depth,slopeWindowFactor);
           var slope =  this.getRegionalSlope(x_axis, soil_surface, xpoint, windowsz);
 
           dot.x = xpoint;
           dot.y = zp;
-          dot.phi = this.deg2Rad(26);
-    
-          dot.theta = Math.atan(Math.abs(slope)); // theta in RADIANS
-          dot.saturation=0.5;
-          dot.satDepth=0;
           dot.depth=depth;
-          dot.cohesion=0;
-          dot.FS=this.FScalc(dot);
+          dot.phi = this.deg2Rad(defaultPhi);
+          dot.cohesion=defaultCohesion;
+          dot.saturation = defaultSaturation;
+          dot.theta = Math.atan(Math.abs(slope)); // theta in RADIANS
+
+          this.FScalc(dot);
+            
           dot.color = this.colorAnalysisPoint(dot.FS);
-          dot.scale = this.scaleAnalysisPoint(dot.saturation);  // these last 2 will be derived from FS and saturation, respectively
+          dot.scale = this.scaleAnalysisPoint(dot.saturation);  
           dot.alive = true;
             
           dots.push(dot); // push to global dots array
-        //            console.log(dot)
           return zp;
             
         } // if
@@ -876,7 +905,7 @@ playState.prototype = {
     },
     
     FScalc: function (point) {
-        return ( (point.cohesion + rho_r-point.saturation*rho_w)*grav*Math.cos(point.theta)*Math.tan(point.phi)*point.depth ) / (rho_r*grav*point.depth*Math.sin(point.theta));
+        point.FS = ( (point.cohesion + (rho_r-point.saturation*rho_w)*grav*Math.cos(point.theta)*Math.tan(point.phi)*point.depth) / (rho_r*grav*point.depth*Math.sin(point.theta)) );
     },
     
     failurePlane: function (xarr,points,wdw) {
@@ -906,7 +935,7 @@ playState.prototype = {
 
             } // for j
 
-            if (npt > 2*soil_thickness[i]) {
+            if (npt > 0.2*ptDensity * soil_thickness[i]*wdw) {
                 hx[i] = dpRunning / npt;
             }
         }     // for i
@@ -918,31 +947,32 @@ playState.prototype = {
         for (var i=0; i<points.length; i++)  {
             
             if (points[i].y >= this.interp1(x_axis,soil_surface,points[i].x)) {
-                // kill
-                points[i].alive = false;
+
+                points[i].alive = false; // kill
                 
             } else if (points[i].y <= this.interp1(x_axis,bedrock_surface,points[i].x)) {
-                points[i].alive = false;
-   
-                console.log('underbottomkill')
-                                                   // kill
+                
+                points[i].alive = false; // kill
+                //console.log('underbottomkill')
+                                                   
             } else { 
-              // dot.x     (static)
+              // dot.x    (static)
               // dot.y    (static)
                 
               var topY = this.interp1(x_axis,soil_surface,points[i].x);    
               points[i].depth = topY - points[i].y;
-              points[i].phi = this.deg2Rad(26);
-
-              var windowsz = 10*points[i].depth;
-              var slope =  this.getRegionalSlope(x_axis, soil_surface, points[i].x, windowsz);
+              points[i].phi = this.deg2Rad(defaultPhi);
+              points[i].cohesion=defaultCohesion; // calculated based on proximity to e.g. trees
+                
+              var windowsz = Math.pow(points[i].depth,slopeWindowFactor);
+              var slope = this.getRegionalSlope(x_axis, soil_surface, points[i].x, windowsz);
 
               points[i].theta = Math.atan(Math.abs(slope)); // theta in RADIANS
-              points[i].saturation=0.5; // calculated by rain response function
-              points[i].satDepth=0; // calculated by rain response
-              points[i].cohesion=0; // calculated based on proximity to e.g. trees
-
-              points[i].FS=this.FScalc(points[i]);
+                
+              this.saturationCalc(points[i]);   // updates the saturation and satDepth fields of the point object.
+                
+              this.FScalc(points[i]);   // updates the FS field
+                
               points[i].color = this.colorAnalysisPoint(points[i].FS);
               points[i].scale = this.scaleAnalysisPoint(points[i].saturation);
                 // these last 2 will be derived from FS and saturation, respectively        
@@ -958,7 +988,26 @@ playState.prototype = {
           g.world.bringToTop(dotGroup);
 
     },
+    saturateSoil: function(points,rainTime) {
 
+        points.forEach( this.saturationCalc );
+        
+    },
+    
+    saturationCalc: function(point) {
+        // function updates both the saturation and satDepth fields of the point object.
+        if (rainFlag) {
+            point.saturation += 4 * (queryInterval/timeRate); 
+        }
+        point.saturation -= 0.5 * (queryInterval/timeRate)*point.saturation;
+        
+        point.satDepth=0; // calculated by rain response
+        
+    },
+
+    
+    
+    
     
 
     
