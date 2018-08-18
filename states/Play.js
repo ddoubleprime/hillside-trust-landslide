@@ -22,6 +22,7 @@ var dotGroup;
 var ptDensity = 0.01;   // points per sq phys unit
 var showdotmode = true;
 
+var ksat = .1;        // infiltration rate / conductivity term, scales the rate of progress of the wetting front
 var defaultCohesion = 1000, defaultSaturation = 0.5, defaultPhi = 24, slopeWindowFactor = 3;
 
 var ti, tiEvent, timeRate = 10000;  // ms per real-world time unit
@@ -162,7 +163,7 @@ playState.prototype = {
         timeDisplay.setText('Day: ' + Math.round(nowTime*10)/10);
 
         // raining for testing
-        if (nowTime >= 1 && nowTime < 2) {        
+        if (nowTime >= 1 && nowTime < 5) {        
             rainDisplay.setText("It's Raining!");
             rainDisplay.fill = '#0000FF';
             if (rainFlag == false) {
@@ -997,12 +998,15 @@ playState.prototype = {
     saturationCalc: function(point) {
         // function updates both the saturation and satDepth fields of the point object.
         if (rainFlag) {
-            point.saturation += 4 * (queryInterval/timeRate); 
-        }
+            // calculate the depth of the wetting front, which increases proportionally to the sqrt(time) during rain. this is set up to be spatially variable but for now it isn't
+            point.satDepth += ksat * Math.sqrt(rainTime);
+            if (point.satDepth >= point.depth) {
+                point.saturation += 4 * (queryInterval/timeRate); 
+            }
+        } else {point.satDepth=0} 
+
         point.saturation -= 0.5 * (queryInterval/timeRate)*point.saturation;
-        
-        point.satDepth=0; // calculated by rain response
-        
+                
     },
 
     

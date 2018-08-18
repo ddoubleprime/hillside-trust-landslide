@@ -28,7 +28,7 @@ Fix:
         - this will be awkward at the edges
     - set slope window size based on horizontal distance to surface?
         - need horz projection. use interp1 to interp x-value between z-points? (monotonicity likely to be a problem. would need all intercepts and pick nearest)
-    
+2. New points added above a saturating soil are not correctly saturating. Existing points   behave correctly considering their greater depth
 3. Are killed bodies that exit L side removed properly from the balls array?
 
 
