@@ -7,9 +7,9 @@ var soilclr = 0x7C450D, rockclr = 0x333333;
 var dx = 1, VE = 3;     // x-spacing in grid units, vertical exaggeration
 var worldW = 603, worldH = 504;
 var y_base, soil_surface, bedrock_surface;
-var surf_amp=20,surf_wavelength=50,surf_shift=-120;
+var surf_amp=20,surf_wavelength=50,surf_shift=0;
 var dx_canvas, dy_canvas, x_axis_canvas, soil_surface_canvas;
-var soil_thickness;
+var soil_thickness, soil_surface_old;
 var HrField = document.getElementById("Hreg");	// pull reg height from HTML slider
 var Hr = Number(HrField.value);
 
@@ -19,6 +19,7 @@ var grav = 9.81;
 
 var dots = [];
 var dotGroup;
+var ptDensity = 0.05;   // points per sq phys unit
 var showdotmode = true;
 
 var ti, tiEvent, timeRate = 10000;  // ms per real-world time unit
@@ -119,6 +120,7 @@ playState.prototype = {
         
         // prepare the soil surface array
         soil_surface = this.arrayScale(bedrock_surface,1,Hr);
+        soil_surface_old = this.arrayScale(soil_surface,1,0);  // makes a copy of soil_surface
 
         // assign physics bodies and properties        
         g.physics.box2d.enable(soil_graphic); // not necessary - make surface a free body?
@@ -131,11 +133,7 @@ playState.prototype = {
 
         this.updateLandscapeGraphics();
         
-        var numPts = 500;
-        var ptDensity = numPts/this.arrayAreaBetween(bedrock_surface,soil_surface,dx);
-        console.log(ptDensity);
-        
-        this.pointsInArea(numPts);        
+        this.pointsInArea(ptDensity,x_axis,soil_surface,bedrock_surface);        
         
         // make canvas-unit coordinate pairs for drawing and draw bedrock graphic
         top_pts = this.two1dto2d(x_axis_canvas,bedrock_surface_canvas);
@@ -161,6 +159,8 @@ playState.prototype = {
         // get new thickness value
         if (Hr != Number(HrField.value)) {
             var HrNew = Number(HrField.value);
+            
+            soil_surface_old = this.arrayScale(soil_surface,1,0);  // makes a copy of soil_surface
             soil_surface = this.arrayScale(soil_surface,1,HrNew-Hr);
             
             Hr = HrNew;
@@ -200,6 +200,8 @@ playState.prototype = {
          if (changeFlag == true) {
              
              this.updateLandscapeGraphics();
+             this.pointsInArea(ptDensity,x_axis,soil_surface,soil_surface_old);
+             soil_surface_old = this.arrayScale(soil_surface,1,0);  // resets this to the new soil_surface
              this.updateAnalysisPoints(dots);
             
          }   // changeFlag
@@ -723,6 +725,7 @@ playState.prototype = {
     digActiveShovel: function () {
         if (!shovelButton.input.pointerOver() && !dumpButton.input.pointerOver()) {
 
+            soil_surface_old = this.arrayScale(soil_surface,1,0);  // makes a copy of soil_surface
             soil_surface = this.applyShovel(active_shovel,g.input.x,x_axis,soil_surface);
             soil_surface = this.arrayMax(soil_surface,bedrock_surface);
             
@@ -785,32 +788,42 @@ playState.prototype = {
     
 /* ANALYSIS POINTS */
     
-    pointsInArea: function (numPts) {
+    pointsInArea: function (ptDensity,x_axis,arrT,arrB) {
 
-        // option 1. filter x_array by thickness threshold, then pick one random index*dx + a random*0.5dx jitter. 2 calls to Math.random() per point.
-        var trash, xi;
-        [trash,xi] = this.arrayThresh(soil_thickness,0);
-        console.log(trash)
-        console.log(xi)
+        // filter x_array by thickness threshold, then pick one random index*dx + a random*0.5dx jitter. 2 calls to Math.random() per point.
+        // thickness is the difference between arrT and arrB
+        var thick = this.arrayAdd(arrT,arrB,-1);
+        var posThick, xi;
+        // use the thresholder to return the indices of cells that meet the criterion
+        [posThick,xi] = this.arrayThresh(thick,0.01);
+
+        if (this.isEmpty(xi)) {return null} else {
+            
+            // get the area between. use the thresholded thickness and a zero-array, because the arrT and arrB might cross, and the area result would be biased by the negative differences
+            var area = this.arrayAreaBetween(posThick,this.zeros(x_axis.length));
+            var numPts = Math.round(ptDensity * area);
+                        console.log(area, numPts)
         
-        for (var i = 0; i < numPts; i++) {
-            var jitter = Math.random()*dx;
-            var xval = x_axis[ xi[Math.floor( Math.random()*(xi.length) )] ];
-            var xp = xval + jitter;  // this needs to fall within the cells where thickness>0, and then all should work the same as before
-            
-            // option 2. ???
-            
-            this.randomZPoint(xp);
-            this.addDotToGroup(dots[i]);
+            for (var i = 0; i < numPts; i++) {
+                var jitter = Math.random()*dx;
+                // get the x value corresponding to a random element of the xi indices array
+                var xval = x_axis[ xi[Math.floor( Math.random()*(xi.length) )] ];
+                var xp = xval + jitter;  
+          
+                // interpolate y-bounds from soil and bedrock surface arrays
+                // inputs/returns physical grid units
+                var topY = this.interp1(x_axis,arrT,xp);    
+                var botY = this.interp1(x_axis,arrB,xp);                
+                this.randomZPoint(xp,topY,botY);
+                
+                this.addDotToGroup(dots[i]);
 
-        }
+            } // for
+        } // if
     },
     
-    randomZPoint: function (xpoint) {
-      // interpolate y-bounds from soil and bedrock surface arrays
-      // inputs/returns physical grid units
-      var topY = this.interp1(x_axis,soil_surface,xpoint);    
-      var botY = this.interp1(x_axis,bedrock_surface,xpoint);
+    randomZPoint: function (xpoint,topY,botY) {
+      // create and initalize a new analysis point at a random location z between topY and botY and add it to the global(!) dots array
         
       if (topY - botY <= 0) {return null}
         else {
