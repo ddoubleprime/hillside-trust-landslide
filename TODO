@@ -2,14 +2,15 @@ TODO:
 
 Implement:
 
-1. Saturation wetting front
+1. Balls back to soil after not moving for a certain time
+    - let each LS stabilize before checing for new landsliding
+2. Smooth/monotonize the failure plane
+3. Draw balls behind soil.
 5. Trees and other local point modifiers (proximity modifier object class, usable for drains, trees, roads, etc.)
     - proximity method returns all analysis points within a radius
     - scale effect by distance 
 6. River object. Where the bedrock is at a local minimum, uses a shovel to dig soil to zero there and attaches a kill zone for physics bodies that reach the "river".
 7. Display scale bars H and V
-8. Balls back to soil after not moving for a certain time
-9. Test planefinder based on max depth instead of mean
 10. Disable dragging while in shovel or dump mode
 12. Change thickness slider to a +/- soil everywhere button that adds a fixed increment per click    
 13. Juice! 
@@ -29,7 +30,7 @@ Fix:
     - set slope window size based on horizontal distance to surface?
         - need horz projection. use interp1 to interp x-value between z-points? (monotonicity likely to be a problem. would need all intercepts and pick nearest)
 2. New points added above a saturating soil are not correctly saturating. Existing points   behave correctly considering their greater depth
-3. Are killed bodies that exit L side removed properly from the balls array?
+4. Are killed bodies that exit L side removed properly from the balls array?
 
 
 Sprite work:
@@ -70,6 +71,11 @@ DONE:
     - allow "sectoring" so only changed sectors are redotted
 √ Saturation
     - requires rain timer and button or equiv test mechanism
+√ Saturation wetting front
+√ Test planefinder based on max depth instead of mean
+√ Landslide plane not resetting properly due to "ghost" analysis pointa after a failure
+
+
         
         
 DEPRECATED NOTES

@@ -23,7 +23,7 @@ var ptDensity = 0.01;   // points per sq phys unit
 var showdotmode = true;
 
 var ksat = .1;        // infiltration rate / conductivity term, scales the rate of progress of the wetting front
-var defaultCohesion = 1000, defaultSaturation = 0.5, defaultPhi = 24, slopeWindowFactor = 3;
+var defaultCohesion = 5000, defaultSaturation = 0.5, defaultPhi = 24, slopeWindowFactor = 3;
 
 var ti, tiEvent, timeRate = 10000;  // ms per real-world time unit
 var timeKeeper, nowTime, worldTime = 0;
@@ -38,13 +38,13 @@ var dumpMode = false;
 var shovelButton, dumpButton;
 var rainFlag = false;
 var changeFlag = false;
-var activeLS = false;
+var activeLS = false, newLS = false;
 var active_ls_balls = [];
 var adding_shovel, digging_shovel, landslide_shovel, active_shovel;
 
 var esckey;
 var slide_body;
-var lkey, hkey;
+var lkey, hkey, rkey;
 
 
 var playState = function(game) {
@@ -71,8 +71,9 @@ playState.prototype = {
         g.input.addMoveCallback(this.mouseDragMove, this);
         g.input.onUp.add(this.mouseDragEnd, this);
         esckey = g.input.keyboard.addKey(Phaser.Keyboard.ESC);
-        lkey = g.input.keyboard.addKey(Phaser.Keyboard.L)
-        hkey = g.input.keyboard.addKey(Phaser.Keyboard.H)
+        lkey = g.input.keyboard.addKey(Phaser.Keyboard.L);
+        hkey = g.input.keyboard.addKey(Phaser.Keyboard.H);
+        rkey = g.input.keyboard.addKey(Phaser.Keyboard.R);
         shovelButton = g.add.button(worldW-150, 20, 'shovel', this.toggleShovelMode, this);
         shovelButton.scale.setTo(0.025, 0.025);
         dumpButton = g.add.button(worldW-80, 20, 'dumptruck', this.toggleDumpMode, this);
@@ -97,6 +98,8 @@ playState.prototype = {
         
         x_axis_canvas = this.arrayScale(x_axis,dx_canvas,0);
         
+        /* CREATE: PHYSICS */
+        
         // set the physics engine scale as the x-scale of this simulation
         // note y-scale may be different due to VE - may need to adjust physics parameters accordingly
         g.physics.box2d.setPTMRatio(dx_canvas);  
@@ -115,8 +118,9 @@ playState.prototype = {
         
         console.log(g.physics.box2d);
         
-        lkey.onDown.add(this.doLandslide, this)
-        hkey.onDown.add(this.newHouse, this)
+        lkey.onDown.add(this.doLandslide, this);
+        hkey.onDown.add(this.newHouse, this);
+        rkey.onDown.add(this.toggleRain, this);
         
         /* CREATE: SURFACE ARRAYS */
         
@@ -144,14 +148,14 @@ playState.prototype = {
         
         // make canvas-unit coordinate pairs for drawing and draw bedrock graphic
         top_pts = this.two1dto2d(x_axis_canvas,bedrock_surface_canvas);
-        this.drawgraphic(bedrock_graphic,bot_pts,top_pts,rockclr)
+        this.drawgraphic(bedrock_graphic,bot_pts,top_pts,rockclr);
         
                 
-        /* CREATE: PHYSICS */
-        house = this.newHouse()
+        house = this.newHouse();
         
         
         /* CREATE: TIMING */
+        g.time.events.loop(5000, this.landslideListener, this)
         ti.start();
     },
 
@@ -162,32 +166,14 @@ playState.prototype = {
         nowTime = ti.ms/timeRate;  // simulation world time
         timeDisplay.setText('Day: ' + Math.round(nowTime*10)/10);
 
-        // raining for testing
-        if (nowTime >= 1 && nowTime < 5) {        
-            rainDisplay.setText("It's Raining!");
-            rainDisplay.fill = '#0000FF';
-            if (rainFlag == false) {
-              rainStartTime = nowTime;
-            }
-            rainFlag = true;  
+        if (rainFlag) {            
             rainTime = nowTime - rainStartTime;
-            
-        } else { 
-            rainDisplay.setText("It's Sunny!") 
-            rainDisplay.fill = '#FFDD22';
-            if (rainFlag == true) {
-              rainTime = 0;
-            }
-            rainFlag = false;            
         }
         
         if (ti.ms >= nextQuery) {
             nextQuery += queryInterval;
-            
             this.updateAnalysisPoints(dots);
-            
         }
-        
         
         // get new thickness value
         if (Hr != Number(HrField.value)) {
@@ -235,7 +221,7 @@ playState.prototype = {
              this.updateLandscapeGraphics();
              this.pointsInArea(ptDensity,x_axis,soil_surface,soil_surface_old);
              soil_surface_old = this.arrayScale(soil_surface,1,0);  // resets this to the new soil_surface
-             this.updateAnalysisPoints(dots);
+             dots = this.updateAnalysisPoints(dots);
             
          }   // changeFlag
         
@@ -530,11 +516,6 @@ playState.prototype = {
         var trash;
         [slide_thickness, trash] = this.arrayThresh(slide_thickness,0.2*Math.max.apply(Math,slide_thickness));
         
-        // update the soil surface using these points (as normal)
-        soil_surface = post_ls_surface;        
-        this.updateLandscapeGraphics();
-        this.updateAnalysisPoints(dots);
-        
         // need the x-range of the body points (nonzero elements in thresholded thickness.)
         var slide_area_l = 0;
         //var slide_thick_local = slide_thickness.filter(this.checkNonZero);
@@ -548,6 +529,12 @@ playState.prototype = {
         
         // add new balls to balls array
         active_ls_balls = active_ls_balls.concat(newballs);
+        
+        // update the soil surface using these points (as normal)
+        soil_surface = post_ls_surface;        
+        this.updateLandscapeGraphics();
+        dots = this.updateAnalysisPoints(dots);
+        
         activeLS = true;
         
     },
@@ -604,7 +591,7 @@ playState.prototype = {
                 for (var j = ymin-jdy; j <= ymax; j-=jdy) {
                     var bx = i*dx_canvas, by = worldH + j*dy_canvas;
                     var ball = g.add.sprite(bx,by,'water');
-                    ball.width = 2*ballsize; ball.height = 2*ballsize;
+                    ball.width = 3*ballsize; ball.height = 3*ballsize;
                     ball.tint = soilclr;
                     ball.anchor.x = 0.5; ball.anchor.y = 0.5;
 
@@ -752,6 +739,34 @@ playState.prototype = {
             dumpMode = true;
             esckey.onDown.addOnce(this.toggleDumpMode, this);
         }
+    },
+    
+    toggleRain: function () {
+        
+        if (rainFlag == false) {        
+            rainDisplay.setText("It's Raining!");
+            rainDisplay.fill = '#0000FF';
+            
+            rainStartTime = nowTime;            
+            rainFlag = true;  
+            
+        } else { 
+            rainDisplay.setText("It's Sunny!") 
+            rainDisplay.fill = '#FFDD22';
+            
+            rainTime = 0;            
+            rainFlag = false;            
+        }
+        
+        
+    },
+    
+    landslideListener: function() {
+        
+        var failing = dots.filter( function(d) {return d.FS < 1} );
+        if (failing.length > 0.01 * dots.length) { this.doLandslide() };
+        console.log(failing.length)
+        
     },
     
     digActiveShovel: function () {
@@ -908,8 +923,45 @@ playState.prototype = {
     FScalc: function (point) {
         point.FS = ( (point.cohesion + (rho_r-point.saturation*rho_w)*grav*Math.cos(point.theta)*Math.tan(point.phi)*point.depth) / (rho_r*grav*point.depth*Math.sin(point.theta)) );
     },
-    
+        
     failurePlane: function (xarr,points,wdw) {
+        /* This function, given the subset of ground test points that are failing, determines 
+        whether enough nearby points are failing to interpolate a landslide surface across them. It returns an array of size(x_axis) with the depth of the failure plane in the appropriate elements, or zero wherethere is no failure.
+
+        inputs: points: array of analysis point objects; x_axis: x-coordinates of ground surface points wdw: window around each column to count points
+        returns: hx: array of size(x_axis) with depth of failure surface at each surface x-coordinate */        
+        // create the array that stores fail depths along the x axis
+        
+        var hx = this.zeros(xarr.length);
+
+        var dpMax, npt, xi;
+
+        for (var i=0; i<xarr.length; i++) {
+            // find the failing soil points that lie within the range defined by xi and wdw
+
+            xi = xarr[i]; 
+            dpMax = 0;
+            npt = 0;
+            for (var j=0; j<points.length; j++) {
+
+                if (points[j].x >= xi-0.5*wdw && points[j].x <= xi+0.5*wdw && points[j].FS < 1) {
+                    npt++;
+                    if (dots[j].depth > dpMax) {
+                        dpMax = dots[j].depth;
+                    }
+                }
+
+            } // for j
+
+            if (npt > 0) {
+                hx[i] = dpMax;
+            }
+        }     // for i
+        return hx;
+    
+    },
+    
+    failurePlaneMean: function (xarr,points,wdw) {
         /* This function, given the subset of ground test points that are failing, determines 
         whether enough nearby points are failing to interpolate a landslide surface across them. It returns an array of size(x_axis) with the depth of the failure plane in the appropriate elements, or zero wherethere is no failure.
 
@@ -987,8 +1039,11 @@ playState.prototype = {
         
           this.updateDotGfx(points,dotGroup);
           g.world.bringToTop(dotGroup);
+        
+        return points;
 
     },
+    
     saturateSoil: function(points,rainTime) {
 
         points.forEach( this.saturationCalc );
@@ -1001,7 +1056,7 @@ playState.prototype = {
             // calculate the depth of the wetting front, which increases proportionally to the sqrt(time) during rain. this is set up to be spatially variable but for now it isn't
             point.satDepth += ksat * Math.sqrt(rainTime);
             if (point.satDepth >= point.depth) {
-                point.saturation += 4 * (queryInterval/timeRate); 
+                point.saturation += 1 * (queryInterval/timeRate); 
             }
         } else {point.satDepth=0} 
 
