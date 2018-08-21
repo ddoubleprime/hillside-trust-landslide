@@ -31,7 +31,7 @@ preload: function(){
   g.load.script('threshold', 'js/phaser-ce-2.10.0/filters/Threshold.js');
 },
 create: function() {
-  g.state.start('menu');
+  g.state.start('play');
 }
 
 };

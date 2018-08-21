@@ -11,7 +11,7 @@ var surf_amp=20,surf_wavelength=50,surf_shift=0;
 var dx_canvas, dy_canvas, x_axis_canvas, soil_surface_canvas, bedrock_surface_canvas, y_base_canvas;
 var soil_thickness, soil_surface_old;
 var HrField = document.getElementById("Hreg");	// pull reg height from HTML slider
-var Hr = Number(HrField.value);
+var Hr = 2.5;//Number(HrField.value);
 
 var rho_r = 1500;
 var rho_w = 1000;
@@ -84,13 +84,13 @@ playState.prototype = {
         
         shovelButton = g.add.button(worldW-95, 80, 'shovel', this.toggleShovelMode, this,1,3,2,3);
         shovelButton.scale.setTo(0.25, 0.25);
-        shovelButton.alpha = 0.7;
+        shovelButton.alpha = 0.8;
         
         dumpButton = g.add.button(worldW-95, 5, 'dumptruck', this.toggleDumpMode, this, 1,3,2,3);
         dumpButton.scale.setTo(0.3, 0.3);
-        dumpButton.alpha = 0.7;
+        dumpButton.alpha = 0.8;
         
-        houseButton = g.add.button(worldW-170, 20, 'housebtn', this.newHouse, this,1,2,1,1);
+        houseButton = g.add.button(worldW-170, 20, 'housebtn', function() {this.newHouse(worldW/2,10)}, this,1,2,1,1);
         houseButton.scale.setTo(0.8, 0.8);        
         
         rainButton = g.add.button(10, 10, 'rain_button', null, null, 1, 3, 2, 3);
@@ -138,7 +138,7 @@ playState.prototype = {
         console.log(g.physics.box2d);
         
         lkey.onDown.add(this.doLandslide, this);
-        hkey.onDown.add(this.newHouse, this);
+        hkey.onDown.add(function() {this.newHouse(worldW/2,10)}, this);
         rkey.onDown.add(this.toggleRain, this);
         
         /* CREATE: SURFACE ARRAYS */
@@ -160,6 +160,23 @@ playState.prototype = {
         
         // make canvas-unit coordinate pairs for drawing
         bot_pts = this.two1dto2d(x_axis_canvas,y_base_canvas);
+        
+        
+        /* Scenario-specific placement */
+        
+        for (i=60;i<80;i++) {
+            // flat spot
+            soil_surface[i] = soil_surface[60];
+        }
+                
+        for (i=80;i<85;i++) {
+            // smooth edge
+            soil_surface[i] = soil_surface[85];
+        }
+        var house = this.newHouse(0.7*worldW, 210);
+        
+        /* End scenario modifications */
+        
 
         this.updateLandscapeGraphics();
         
@@ -188,6 +205,7 @@ playState.prototype = {
         }
         
         // get new thickness value
+        /* KILLING SLIDER FOR INITIAL BETA --------
         if (Hr != Number(HrField.value)) {
             var HrNew = Number(HrField.value);
             
@@ -199,7 +217,7 @@ playState.prototype = {
             changeFlag = true;
     
         }
-            
+            ---------- */
         
         /* Routine here for scooping / dumping 
             Uses something like a gaussian shape subtracted across the range of x-indices selected. These defined by a shovel_width parameter in world grid units.
@@ -661,7 +679,6 @@ playState.prototype = {
                     var clodFrame = Math.ceil(Math.random()*4);
                     var ball = g.add.sprite(bx,by,'clods');
                     ball.frame = clodFrame;
-                    console.log(clodFrame);
                     //var ball = g.add.sprite(bx,by,)
                     ball.width = 4*ballsize; ball.height = 4*ballsize;
                     ball.tint = soilclr;
@@ -827,7 +844,7 @@ playState.prototype = {
         
         if (shovelMode == true) {
             shovelMode = false;
-            shovelButton.alpha = 0.7
+            shovelButton.alpha = 0.8
             shovelButton.setFrames(1, 3, 2, 3);
             g.canvas.style.cursor = "default"
             // destroy shovel listeners
@@ -847,7 +864,7 @@ playState.prototype = {
 
         if (dumpMode == true) {
             dumpMode = false;
-            dumpButton.alpha = 0.7;
+            dumpButton.alpha = 0.8;
             dumpButton.setFrames(1, 3, 2, 3);
             g.canvas.style.cursor = "default"
             // destroy shovel listeners
@@ -935,9 +952,9 @@ playState.prototype = {
         this.depth= din;
     },
     
-    newHouse: function(){
+    newHouse: function(x,y){
         
-        var house = g.add.sprite(worldW/2,10,'house')
+        var house = g.add.sprite(x,y,'house')
         
         house = this.scaleToPhysWidth(house,15); // (object, desired width in physical units)
         
@@ -1128,7 +1145,7 @@ playState.prototype = {
 
             } // for j
 
-            if (npt > 0) {
+            if (npt > 1) {
                 hx[i] = dpMax;
             }
         }     // for i
