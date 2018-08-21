@@ -3,12 +3,12 @@ var bedrock;
 var x_axis;
 var soil_graphic,bedrock_graphic;
 var bot_pts, top_pts;
-var soilclr = 0x7C450D, rockclr = 0x333333;
+var soilclr = 0x998355, rockclr = 0x333333;
 var dx = 1, VE = 2;     // x-spacing in grid units, vertical exaggeration
 var worldW = 603, worldH = 504;
 var y_base, soil_surface, bedrock_surface;
-var surf_amp=20,surf_wavelength=50,surf_shift=240;
-var dx_canvas, dy_canvas, x_axis_canvas, soil_surface_canvas;
+var surf_amp=20,surf_wavelength=50,surf_shift=0;
+var dx_canvas, dy_canvas, x_axis_canvas, soil_surface_canvas, bedrock_surface_canvas, y_base_canvas;
 var soil_thickness, soil_surface_old;
 var HrField = document.getElementById("Hreg");	// pull reg height from HTML slider
 var Hr = Number(HrField.value);
@@ -19,23 +19,23 @@ var grav = 9.81;
 
 var dots = [];
 var dotGroup;
-var ptDensity = 0.01;   // points per sq phys unit
+var ptDensity = 1;   // points per sq phys unit
 var showdotmode = true;
 
-var ksat = .1;        // infiltration rate / conductivity term, scales the rate of progress of the wetting front
-var defaultCohesion = 5000, defaultSaturation = 0.5, defaultPhi = 24, slopeWindowFactor = 3;
+var ksat = 0.1;        // infiltration rate / conductivity term, scales the rate of progress of the wetting front
+var defaultCohesion = 5000, defaultSaturation = 0.25, defaultPhi = 24, slopeWindowFactor = 2;
 
 var ti, tiEvent, timeRate = 10000;  // ms per real-world time unit
 var timeKeeper, nowTime, worldTime = 0;
 var timeDisplay, rainDisplay, rainTime, rainStartTime;
-var nextQuery = 0, queryInterval = 200;     // in ms
+var checkForLSInterval = 3000, queryInterval = 200;     // in ms
         
 var physBoxTest;
 var box2d;
 
 var shovelMode = false;
 var dumpMode = false;
-var shovelButton, dumpButton;
+var shovelButton, dumpButton, rainButton, houseButton;
 var rainFlag = false;
 var changeFlag = false;
 var activeLS = false, newLS = false, slideStopFlag = false;
@@ -48,14 +48,14 @@ var slide_body;
 var lkey, hkey, rkey;
 
 
-var playState = function(game) {
+var playState = function (game) {
 
 };
 
 
 playState.prototype = {
 
-    create: function(){
+    create: function () {
         ti = g.time.create();
         tiEvent = g.time.create();
         background = g.add.image(0, 0, 'sky_dust');
@@ -63,11 +63,12 @@ playState.prototype = {
         soil_graphic = g.add.graphics(0, 0);
         bedrock_graphic = g.add.graphics(0, 0);
         slide_body = g.add.graphics(0, 0);
-        timeDisplay = g.add.text(5, 5, [], { fill: '#001122', font: '14pt Arial' });
-        rainDisplay = g.add.text(5, 30, [], { fill: '#FFDD22', font: '14pt Arial' });
+        timeDisplay = g.add.text(worldW/2, 5, [], { fill: '#001122', font: '14pt Arial' });
+        timeDisplay.visible = false;
+        //rainDisplay = g.add.text(5, 30, [], { fill: '#FFDD22', font: '14pt Arial' });
         
         // Set up handlers for mouse events
-        g.input.mouse.enabled = true
+        g.input.mouse.enabled = true;
         g.input.onDown.add(this.mouseDragStart, this);
         g.input.addMoveCallback(this.mouseDragMove, this);
         g.input.onUp.add(this.mouseDragEnd, this);
@@ -75,22 +76,39 @@ playState.prototype = {
         lkey = g.input.keyboard.addKey(Phaser.Keyboard.L);
         hkey = g.input.keyboard.addKey(Phaser.Keyboard.H);
         rkey = g.input.keyboard.addKey(Phaser.Keyboard.R);
-        shovelButton = g.add.button(worldW-150, 20, 'shovel', this.toggleShovelMode, this);
-        shovelButton.scale.setTo(0.025, 0.025);
-        dumpButton = g.add.button(worldW-80, 20, 'dumptruck', this.toggleDumpMode, this);
-        dumpButton.scale.setTo(0.25, 0.25);
+        
+        
+        rain_emitter = g.add.emitter(g.world.centerX, 0, 400);
+        this.rainemitter(rain_emitter);
+        
+        
+        shovelButton = g.add.button(worldW-95, 80, 'shovel', this.toggleShovelMode, this,1,3,2,3);
+        shovelButton.scale.setTo(0.25, 0.25);
+        shovelButton.alpha = 0.7;
+        
+        dumpButton = g.add.button(worldW-95, 5, 'dumptruck', this.toggleDumpMode, this, 1,3,2,3);
+        dumpButton.scale.setTo(0.3, 0.3);
+        dumpButton.alpha = 0.7;
+        
+        houseButton = g.add.button(worldW-170, 20, 'housebtn', this.newHouse, this,1,2,1,1);
+        houseButton.scale.setTo(0.8, 0.8);        
+        
+        rainButton = g.add.button(10, 10, 'rain_button', null, null, 1, 3, 2, 3);
+        rainButton.scale.setTo(0.6, 0.6);
+        rainButton.onInputDown.add(this.toggleRain, this)
+        rainButton.onInputUp.add(this.toggleRain, this)
                 
         dotGroup = g.add.group();
 
         adding_shovel = new this.Shovel(3,-2); // (w,d)
         digging_shovel = new this.Shovel(2,2);
-        landslide_shovel = new this.Shovel(5,15)
+        landslide_shovel = new this.Shovel(5,15);
         
         x_axis = this.vector(0,100,dx); // grid units
-        y_base = Array(x_axis.length); // grid units
+        y_base = new Array(x_axis.length); // grid units
         y_base.fill(0);
 
-        console.log(worldW,worldH)
+        console.log(worldW,worldH);
         
         //grid to canvas coordinates
         dx_canvas = worldW / (x_axis.length-1)/dx;   // pixels per grid unit
@@ -103,12 +121,12 @@ playState.prototype = {
         
         // set the physics engine scale as the x-scale of this simulation
         // note y-scale may be different due to VE - may need to adjust physics parameters accordingly
-        g.physics.box2d.setPTMRatio(dx_canvas);  
+        g.physics.box2d.setPTMRatio(dx_canvas);
         
         // Default physics properties
         g.physics.box2d.gravity.y = -dy_canvas*9.81;
-        g.physics.box2d.density = 2000; 
-        g.physics.box2d.friction = 0.5; 
+        g.physics.box2d.density = 2000;
+        g.physics.box2d.friction = 0.5;
         g.physics.box2d.restitution = 0.1;
         // word bounds for physics
         //g.world.setBounds(-100, 0, worldW+100, worldH);
@@ -151,28 +169,22 @@ playState.prototype = {
         top_pts = this.two1dto2d(x_axis_canvas,bedrock_surface_canvas);
         this.drawgraphic(bedrock_graphic,bot_pts,top_pts,rockclr);
         
-                
-        var house = this.newHouse();
-                
+                            
         /* CREATE: TIMING */
-        g.time.events.loop(5000, this.landslideListener, this)
+        g.time.events.loop(queryInterval, function () {this.updateAnalysisPoints(dots)}, this);
+        g.time.events.loop(checkForLSInterval, this.landslideListener, this);
         ti.start();
     },
 
 
     /* UPDATER */
     
-    update: function(){
+    update: function() {
         nowTime = ti.ms/timeRate;  // simulation world time
         timeDisplay.setText('Day: ' + Math.round(nowTime*10)/10);
 
         if (rainFlag) {            
             rainTime = nowTime - rainStartTime;
-        }
-        
-        if (ti.ms >= nextQuery) {
-            nextQuery += queryInterval;
-            this.updateAnalysisPoints(dots);
         }
         
         // get new thickness value
@@ -196,7 +208,8 @@ playState.prototype = {
             
             active_shovel = digging_shovel; 
             // glowing button
-            shovelButton.tint = 0xFF9966;
+            shovelButton.alpha = 1;
+            shovelButton.setFrames(1, 3, 2, 2);
             // change cursor
             g.canvas.style.cursor = "sw-resize";
             g.input.onDown.addOnce(this.digActiveShovel, this);
@@ -208,7 +221,8 @@ playState.prototype = {
             active_shovel = adding_shovel;    
             
             // glowing button
-            dumpButton.tint = 0xFF9966;
+            dumpButton.alpha = 1;
+            dumpButton.setFrames(1, 2, 2, 2);
             // change cursor
             g.canvas.style.cursor = "cell";
             g.input.onDown.addOnce(this.digActiveShovel, this);
@@ -227,7 +241,6 @@ playState.prototype = {
         
         if (activeLS) {
             var n_stopped = this.checkBalls( active_ls_balls,x_axis_canvas, this.arrayMin(soil_surface_canvas,bedrock_surface_canvas) );
-            console.log(active_ls_balls.length,n_stopped)
             
             if (n_stopped == active_ls_balls.length) {
                 if (slideStopFlag == false) {
@@ -313,7 +326,7 @@ playState.prototype = {
         // sums the area between two arrays. assumes units, dx, and length are the same for both.
         if (arr1.length == arr2.length){
             var adiff = this.arrayAdd(arr1,arr2,-1);
-            var area = adiff.reduce( function(total,num,dx){return (total+num*dx)} )
+            var area = adiff.reduce( function(total,num){return (total+num*dx)} )
             return Math.round( Math.abs(area) );}
         else {console.log('arrayAreaBetween: Arrays not of the same length')}
         
@@ -579,7 +592,7 @@ playState.prototype = {
         var slide_base_padded = this.arrayScale(post_ls_surface,1,0.001);
         
         // before passing the base array to slidebodytoballs, need to isolate the part of the body that is above the bedrock surface
-        var ballsize = 3;  // px
+        var ballsize = 4;  // px
         var newballs = this.slideBodyToBalls( slide_thickness,slide_base_padded,slide_area_l,slide_area_r, ballsize );
         
         // add new balls to balls array
@@ -636,27 +649,33 @@ playState.prototype = {
         // at each x-position, iterate at increments of y-body-size from base to surface
         // return the array that contains the bodies 
         var ball_container = [];
-        var i_dx = (2*ballsize+0.01)/dx_canvas;        
+        var i_dx = (1.41*ballsize+0.01)/dx_canvas;        
         for (var i = x_axis[lIdx]; i <= x_axis[rIdx]-i_dx; i+=i_dx )
             {
 
                 var ymin = this.interp1(x_loc,arrB,i);
                 var ymax = this.interp1(x_loc,ls_surface,i);
-                var jdy = (2*ballsize+0.01)/dy_canvas;
+                var jdy = (1*ballsize+0.01)/dy_canvas;
                 for (var j = ymin-jdy; j <= ymax; j-=jdy) {
                     var bx = i*dx_canvas, by = worldH + j*dy_canvas;
-                    var ball = g.add.sprite(bx,by,'water');
-                    ball.width = 3*ballsize; ball.height = 3*ballsize;
+                    var clodFrame = Math.ceil(Math.random()*4);
+                    var ball = g.add.sprite(bx,by,'clods');
+                    ball.frame = clodFrame;
+                    console.log(clodFrame);
+                    //var ball = g.add.sprite(bx,by,)
+                    ball.width = 4*ballsize; ball.height = 4*ballsize;
                     ball.tint = soilclr;
                     ball.anchor.x = 0.5; ball.anchor.y = 0.5;
 
                     // assign physics bodies and properties        
                     g.physics.box2d.enable(ball);
-                    ball.body.setCircle(ballsize);
+                    ball.body.setRectangle(ballsize,ballsize);
                     ball.body.bullet = true;
                     ball.body.collideWorldBounds=false;
                     ball.body.outOfBoundsKill = true;
                     ball.body.friction = 0.7;
+                    ball.body.angularDamping = 0.5;
+                    ball.body.angle = Math.random()*360;
 
                     ball_container.push(ball);
                 
@@ -676,9 +695,9 @@ playState.prototype = {
             var bb = ball_array[b];
             
             // count stationary
-            if (bb.body.velocity.x == 0 && bb.body.velocity.y == 0) {n_stopped++};
+            if (bb.body.velocity.x < 0.1 && bb.body.velocity.y < 0.1) {n_stopped++};
             
-            if ( bb.x >= worldW-0.5*bb.width || bb.y > this.interp1(x_array,surf_array,bb.x) ) {
+            if ( bb.x >= worldW || bb.y > this.interp1(x_array,surf_array,bb.x) ) {
                 bb.destroy();
                 ball_array.splice(b,1);
             }
@@ -724,26 +743,6 @@ playState.prototype = {
       var blue = this.rgb2Hex(b);
       return '0x'+red+green+blue;
     },
-        
-    colorAnalysisPoint: function(FS) {
-        // returns a hex color scaled by the input factor of safety
-        var ptcolorR = Math.round(Math.min(1/Math.exp(FS-1),1) * 255);
-        var ptcolorG = 0;
-        var ptcolorB = 255-ptcolorR;
-        var pcol = this.fullColorHex(ptcolorR,ptcolorG,ptcolorB);
-            if (FS < 1) {pcol = 0x000000}
-
-        return pcol;
-    },
-
-    scaleAnalysisPoint: function(m) {
-        // returns a dot size in pixels radius for analysis point given saturation value m
-        var pscale = m*5;             
-        if (pscale < 1) {pscale = 1}
-
-        return pscale;
-
-    },
     
     updateLandscapeGraphics: function() {
         // derive thickness array
@@ -769,7 +768,6 @@ playState.prototype = {
         // find thickness of ball deposits
         var deposit_thickness = this.depositThickness(x_axis,surf,balls,5);        
         var new_surface = this.arrayAdd(surf,deposit_thickness,1);
-        console.log(deposit_thickness);
         return new_surface;
         
     },
@@ -806,13 +804,31 @@ playState.prototype = {
         
     },
     
+    rainemitter: function (emitter) {
+        emitter.width = g.world.width;
+
+        emitter.makeParticles('rain');
+
+        emitter.minParticleScale = 0.1;
+        emitter.maxParticleScale = 0.5;
+
+        emitter.setYSpeed(300, 500);
+        emitter.setXSpeed(-5, 5);
+
+        emitter.minRotation = 0;
+        emitter.maxRotation = 0;
+        emitter.start(false, 1600, 5, 0);
+        emitter.on = false;
+    },
+    
 /* CALLBACKS and INPUT EVENTS */    
     
     toggleShovelMode: function () {
         
         if (shovelMode == true) {
             shovelMode = false;
-            shovelButton.tint = 0xFFFFFF;
+            shovelButton.alpha = 0.7
+            shovelButton.setFrames(1, 3, 2, 3);
             g.canvas.style.cursor = "default"
             // destroy shovel listeners
             esckey.onDown.remove(this.toggleShovelMode, this);
@@ -831,7 +847,8 @@ playState.prototype = {
 
         if (dumpMode == true) {
             dumpMode = false;
-            dumpButton.tint = 0xFFFFFF;
+            dumpButton.alpha = 0.7;
+            dumpButton.setFrames(1, 3, 2, 3);
             g.canvas.style.cursor = "default"
             // destroy shovel listeners
             esckey.onDown.remove(this.toggleDumpMode, this);
@@ -849,16 +866,21 @@ playState.prototype = {
     toggleRain: function () {
         
         if (rainFlag == false) {        
-            rainDisplay.setText("It's Raining!");
-            rainDisplay.fill = '#0000FF';
+            //rainDisplay.setText("It's Raining!");
+            //rainDisplay.fill = '#0000FF';
             
+            rain_emitter.on = true;
+            background.tint = 0x999999;
             rainStartTime = nowTime;            
             rainFlag = true;  
             
         } else { 
-            rainDisplay.setText("It's Sunny!") 
-            rainDisplay.fill = '#FFDD22';
+            //rainDisplay.setText("It's Sunny!") 
+            //rainDisplay.fill = '#FFDD22';
             
+            rain_emitter.on = false;
+            background.tint = 0xFFFFFF;
+
             rainTime = 0;            
             rainFlag = false;            
         }
@@ -875,7 +897,7 @@ playState.prototype = {
     },
     
     digActiveShovel: function () {
-        if (!shovelButton.input.pointerOver() && !dumpButton.input.pointerOver()) {
+        if (!shovelButton.input.pointerOver() && !dumpButton.input.pointerOver() && !rainButton.input.pointerOver()) {
 
             soil_surface_old = this.arrayScale(soil_surface,1,0);  // makes a copy of soil_surface
             soil_surface = this.applyShovel(active_shovel,g.input.x,x_axis,soil_surface);
@@ -915,13 +937,13 @@ playState.prototype = {
     
     newHouse: function(){
         
-        var house = g.add.sprite(worldW/4,100,'house')
+        var house = g.add.sprite(worldW/2,10,'house')
         
         house = this.scaleToPhysWidth(house,15); // (object, desired width in physical units)
         
         g.physics.box2d.enable(house);
         // house properties for reference; can use defaults for most objects
-        house.body.setRectangle(house.width*.6,house.height);
+        house.body.setRectangle(house.width*0.9,house.height*0.8);
         house.body.collideWorldBounds = false;
         house.outOfBoundsKill = true;
         house.fixedRotation = false; 
@@ -948,11 +970,11 @@ playState.prototype = {
         var posThick, xi;
         // use the thresholder to return the indices of cells that meet the criterion
         [posThick,xi] = this.arrayThresh(thick,0.01);
-
-        if (this.isEmpty(xi)) {return null} else {
             
+        if (this.isEmpty(xi)) {return null} else {
             // get the area between. use the thresholded thickness and a zero-array, because the arrT and arrB might cross, and the area result would be biased by the negative differences
-            var area = this.arrayAreaBetween(posThick,this.zeros(x_axis.length));
+            var area = this.arrayAreaBetween(posThick,this.zeros(x_axis.length),dx);
+
             var numPts = Math.round(ptDensity * area);
         
             for (var i = 0; i < numPts; i++) {
@@ -1002,6 +1024,54 @@ playState.prototype = {
           return zp;
             
         } // if
+    },
+    
+    updateAnalysisPoints: function (points) {
+        for (var i=0; i<points.length; i++)  {
+            
+            if (points[i].y >= this.interp1(x_axis,soil_surface,points[i].x)) {
+
+                points[i].alive = false; // kill
+                
+            } else if (points[i].y <= this.interp1(x_axis,bedrock_surface,points[i].x)) {
+                
+                points[i].alive = false; // kill
+                //console.log('underbottomkill')
+                                                   
+            } else { 
+              // dot.x    (static)
+              // dot.y    (static)
+                
+              var topY = this.interp1(x_axis,soil_surface,points[i].x);    
+              points[i].depth = topY - points[i].y;
+              points[i].phi = this.deg2Rad(defaultPhi);
+              points[i].cohesion=defaultCohesion; // calculated based on proximity to e.g. trees
+                
+              var windowsz = Math.pow(points[i].depth,slopeWindowFactor);
+              var slope = this.getRegionalSlope(x_axis, soil_surface, points[i].x, windowsz);
+
+              points[i].theta = Math.atan(Math.abs(slope)); // theta in RADIANS
+                
+              this.saturationCalc(points[i]);   // updates the saturation and satDepth fields of the point object.
+                
+              this.FScalc(points[i]);   // updates the FS field
+                
+              points[i].color = this.colorAnalysisPoint(points[i].FS);
+              points[i].scale = this.scaleAnalysisPoint(points[i].saturation);
+                // these last 2 will be derived from FS and saturation, respectively        
+            } // else            
+
+          } // for i = points
+          
+        
+          points = points.filter(function(pt) {return pt.alive});
+        
+        
+          this.updateDotGfx(points,dotGroup);
+          g.world.bringToTop(dotGroup);
+        
+        return points;
+
     },
     
     updateDotGfx: function (points,dotgp) {
@@ -1101,54 +1171,6 @@ playState.prototype = {
     
 },
     
-    updateAnalysisPoints: function (points) {
-        for (var i=0; i<points.length; i++)  {
-            
-            if (points[i].y >= this.interp1(x_axis,soil_surface,points[i].x)) {
-
-                points[i].alive = false; // kill
-                
-            } else if (points[i].y <= this.interp1(x_axis,bedrock_surface,points[i].x)) {
-                
-                points[i].alive = false; // kill
-                //console.log('underbottomkill')
-                                                   
-            } else { 
-              // dot.x    (static)
-              // dot.y    (static)
-                
-              var topY = this.interp1(x_axis,soil_surface,points[i].x);    
-              points[i].depth = topY - points[i].y;
-              points[i].phi = this.deg2Rad(defaultPhi);
-              points[i].cohesion=defaultCohesion; // calculated based on proximity to e.g. trees
-                
-              var windowsz = Math.pow(points[i].depth,slopeWindowFactor);
-              var slope = this.getRegionalSlope(x_axis, soil_surface, points[i].x, windowsz);
-
-              points[i].theta = Math.atan(Math.abs(slope)); // theta in RADIANS
-                
-              this.saturationCalc(points[i]);   // updates the saturation and satDepth fields of the point object.
-                
-              this.FScalc(points[i]);   // updates the FS field
-                
-              points[i].color = this.colorAnalysisPoint(points[i].FS);
-              points[i].scale = this.scaleAnalysisPoint(points[i].saturation);
-                // these last 2 will be derived from FS and saturation, respectively        
-            } // else            
-
-          } // for i = points
-          
-        
-          points = points.filter(function(pt) {return pt.alive});
-        
-        
-          this.updateDotGfx(points,dotGroup);
-          g.world.bringToTop(dotGroup);
-        
-        return points;
-
-    },
-    
     saturateSoil: function(points,rainTime) {
 
         points.forEach( this.saturationCalc );
@@ -1169,7 +1191,25 @@ playState.prototype = {
                 
     },
 
-    
+    colorAnalysisPoint: function(FS) {
+        // returns a hex color scaled by the input factor of safety
+        var ptcolorR = Math.round(Math.min(1/Math.exp(FS-1),1) * 255);
+        var ptcolorG = 0;
+        var ptcolorB = 255-ptcolorR;
+        var pcol = this.fullColorHex(ptcolorR,ptcolorG,ptcolorB);
+            if (FS < 1) {pcol = 0x000000}
+
+        return pcol;
+    },
+
+    scaleAnalysisPoint: function(m) {
+        // returns a dot size in pixels radius for analysis point given saturation value m
+        var pscale = m*7;             
+        if (pscale < 1.5) {pscale = 1.5} else if (pscale > 5) {pscale=5}
+
+        return pscale;
+
+    },
     
     
     

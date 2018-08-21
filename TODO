@@ -2,8 +2,6 @@ TODO:
 
 Implement:
 
-1. Rain button
-2. Rain overlay
 3. Adjust saturation/drain rates to better match world time, and adjust world time rate
 5. Trees and other local point modifiers (proximity modifier object class, usable for drains, trees, roads, etc.)
     - proximity method returns all analysis points within a radius
@@ -23,19 +21,14 @@ Implement:
 
 Fix:
 
-1. Digging deeply near uphill edge results in catastrophic failure of whole slope
-    - possibly related to slope averaging window increase with depth?
-    - Shovel bug?
+1. Slide surface recovery can hang for a while.
 2. New points added above a saturating soil (during rain) are not correctly saturating. Existing points behave correctly considering their greater depth
-3. New points are not added by the dumping shovel in the vicinty of the left edge. Existing lower points respond to the added thickness. Appears to be a shovel-specific bug. Other additions there (slider, landslides) add points as expected. 
 4. Occasional leftover ball after surface restoration
 5. Slider thickness ignores positve-definite soil thickness when reducing below bedrock
 
 Sprite work:
 
-1. button states
-2. house less tall
-3. house physics poly to match shape
+1. Improve general appearance of things.
 
 Code style work:
 
@@ -83,7 +76,16 @@ DONE:
     - set slope window size based on horizontal distance to surface?
         - need horz projection. use interp1 to interp x-value between z-points? (monotonicity likely to be a problem. would need all intercepts and pick nearest)
     - (was largely solved by plane avaraging and surface restoration)
-        
+√ New points are not added by the dumping shovel in the vicinty of the left edge. Existing lower points respond to the added thickness. Appears to be a shovel-specific bug. Other additions there (slider, landslides) add points as expected. 
+√ Digging deeply near uphill edge results in catastrophic failure of whole slope
+    - possibly related to slope averaging window increase with depth?
+    - it's the slope averaging combined with the extrapolated slope. digging near the edge can result in a large upward slope offscreen. Problematic with SlopeWindowFactor > 2, probably don't need that extreme anyway. Set to 2. But could limit max window size to reduce this issue if needed.
+√ Rain button
+√ Rain overlay
+√ button states
+√ house less tall
+√ house physics poly to match shape
+    
         
 DEPRECATED NOTES
 
