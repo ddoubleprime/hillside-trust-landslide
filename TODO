@@ -2,10 +2,9 @@ TODO:
 
 Implement:
 
-1. Balls back to soil after not moving for a certain time
-    - let each LS stabilize before checing for new landsliding
-2. Smooth/monotonize the failure plane
-3. Draw balls behind soil.
+1. Rain button
+2. Rain overlay
+3. Adjust saturation/drain rates to better match world time, and adjust world time rate
 5. Trees and other local point modifiers (proximity modifier object class, usable for drains, trees, roads, etc.)
     - proximity method returns all analysis points within a radius
     - scale effect by distance 
@@ -24,14 +23,13 @@ Implement:
 
 Fix:
 
-1. Landslide planefinding or FS calc needs a confinement term, so points bouded by stable points on the downill side don't fail. Ball resurfacing will help with this.
-    - use slope of smallest chord projected across point as theta? 
-        - this will be awkward at the edges
-    - set slope window size based on horizontal distance to surface?
-        - need horz projection. use interp1 to interp x-value between z-points? (monotonicity likely to be a problem. would need all intercepts and pick nearest)
-2. New points added above a saturating soil are not correctly saturating. Existing points   behave correctly considering their greater depth
-4. Are killed bodies that exit L side removed properly from the balls array?
-
+1. Digging deeply near uphill edge results in catastrophic failure of whole slope
+    - possibly related to slope averaging window increase with depth?
+    - Shovel bug?
+2. New points added above a saturating soil (during rain) are not correctly saturating. Existing points behave correctly considering their greater depth
+3. New points are not added by the dumping shovel in the vicinty of the left edge. Existing lower points respond to the added thickness. Appears to be a shovel-specific bug. Other additions there (slider, landslides) add points as expected. 
+4. Occasional leftover ball after surface restoration
+5. Slider thickness ignores positve-definite soil thickness when reducing below bedrock
 
 Sprite work:
 
@@ -73,9 +71,18 @@ DONE:
     - requires rain timer and button or equiv test mechanism
 √ Saturation wetting front
 √ Test planefinder based on max depth instead of mean
-√ Landslide plane not resetting properly due to "ghost" analysis pointa after a failure
-
-
+√ Landslide plane not resetting properly due to "ghost" analysis points after a failure
+√ Draw balls behind soil
+√ Smooth/monotonize the failure plane (running average on elevation, convert back to depths?)
+√ Are killed bodies that exit L side removed properly from the balls array?
+√ Balls back to soil after not moving for a certain time
+    - let each LS stabilize before checking for new landsliding
+√ Landslide planefinding or FS calc needs a confinement term, so points bouded by stable points on the downill side don't fail. Ball resurfacing will help with this.
+    - use slope of smallest chord projected across point as theta? 
+        - this will be awkward at the edges
+    - set slope window size based on horizontal distance to surface?
+        - need horz projection. use interp1 to interp x-value between z-points? (monotonicity likely to be a problem. would need all intercepts and pick nearest)
+    - (was largely solved by plane avaraging and surface restoration)
         
         
 DEPRECATED NOTES

@@ -7,7 +7,7 @@ var soilclr = 0x7C450D, rockclr = 0x333333;
 var dx = 1, VE = 2;     // x-spacing in grid units, vertical exaggeration
 var worldW = 603, worldH = 504;
 var y_base, soil_surface, bedrock_surface;
-var surf_amp=20,surf_wavelength=50,surf_shift=0;
+var surf_amp=20,surf_wavelength=50,surf_shift=240;
 var dx_canvas, dy_canvas, x_axis_canvas, soil_surface_canvas;
 var soil_thickness, soil_surface_old;
 var HrField = document.getElementById("Hreg");	// pull reg height from HTML slider
@@ -38,7 +38,8 @@ var dumpMode = false;
 var shovelButton, dumpButton;
 var rainFlag = false;
 var changeFlag = false;
-var activeLS = false, newLS = false;
+var activeLS = false, newLS = false, slideStopFlag = false;
+var slideStopTime = 0;
 var active_ls_balls = [];
 var adding_shovel, digging_shovel, landslide_shovel, active_shovel;
 
@@ -151,9 +152,8 @@ playState.prototype = {
         this.drawgraphic(bedrock_graphic,bot_pts,top_pts,rockclr);
         
                 
-        house = this.newHouse();
-        
-        
+        var house = this.newHouse();
+                
         /* CREATE: TIMING */
         g.time.events.loop(5000, this.landslideListener, this)
         ti.start();
@@ -226,8 +226,30 @@ playState.prototype = {
          }   // changeFlag
         
         if (activeLS) {
-            this.checkBalls( active_ls_balls,x_axis_canvas, this.arrayMin(soil_surface_canvas,bedrock_surface_canvas) );
-            if (this.isEmpty(active_ls_balls)) {activeLS = false}
+            var n_stopped = this.checkBalls( active_ls_balls,x_axis_canvas, this.arrayMin(soil_surface_canvas,bedrock_surface_canvas) );
+            console.log(active_ls_balls.length,n_stopped)
+            
+            if (n_stopped == active_ls_balls.length) {
+                if (slideStopFlag == false) {
+                    console.log('setting stopflag')
+                    slideStopFlag = true;
+                    slideStopTime = ti.ms+0;
+                }
+                
+                if (slideStopFlag == true && ti.ms-slideStopTime > 2500) {
+                    activeLS = false;
+                    slideStopFlag = false;
+                    console.log('recovering surface!')
+                    soil_surface = this.restoreSurface(x_axis,soil_surface,active_ls_balls);
+                    changeFlag = true;
+                }
+                
+            } else if (n_stopped != active_ls_balls.length && slideStopFlag == true) { 
+                slideStopFlag = false; 
+                console.log('resetting stopFlag')
+            } 
+            
+            if (this.isEmpty(active_ls_balls)) {activeLS = false; slideStopFlag = false;}
         }
 
     },
@@ -376,6 +398,34 @@ playState.prototype = {
         return interppt;
 },
     
+    arrayRunningMean: function(xa,ya,n) {
+        // calculates the n-point running mean of ya. end points are calculated based on a linear extrapolation of interior points. n needs to be odd.
+        if (xa.length == ya.length && n % 2 != 0) {
+            
+            var tail = (n-1)/2
+            var rm = Array(ya.length);
+            for (var i=tail; i<ya.length-tail; i++) {
+                var rmRunning = 0;
+                for (j=-tail; j<tail; j++) {
+                    rmRunning += ya[i+j];
+                }
+                rm[i] = rmRunning / n;
+            }
+            
+            var interior = rm.slice(tail,ya.length-tail);
+
+            for (var ii=0;ii<tail;ii++) {                
+                rm[ii] = this.interp1(xa.slice(tail,ya.length-tail),interior,xa[ii]);
+                rm[ya.length-1-ii] = this.interp1(xa.slice(tail,ya.length-tail),interior,xa[ya.length-1-ii]);
+                
+            }
+
+            return rm;
+        }
+        else {console.log('arrayRunningMean: Arrays not of the same length or n is not odd')}
+        
+    },
+    
     arrayMin: function(arr1,arr2){
         
         // from arrays of the same length, takes
@@ -505,16 +555,21 @@ playState.prototype = {
  
     doLandslide: function() {
         
-        var slide_thickness = this.failurePlane(x_axis,dots,5);
+        var slide_thickness = this.failurePlane(x_axis,dots,5*dx);
 
+        var trash;
+        [slide_thickness, trash] = this.arrayThresh(slide_thickness,0.1*Math.max.apply(Math,slide_thickness));
+        
+        slide_surface = this.arrayScale(soil_surface,1,0);
+        slide_thickness = this.arrayRunningMean(x_axis,slide_thickness,5);
+        
         var post_ls_surface = this.arrayAdd(soil_surface,slide_thickness,-1);
         // base of slide body needs to be above bedrock!
         post_ls_surface = this.arrayMax(post_ls_surface,bedrock_surface);
         // correct thickness based on corrected surface
         slide_thickness = this.arrayAdd(soil_surface,post_ls_surface,-1)
         
-        var trash;
-        [slide_thickness, trash] = this.arrayThresh(slide_thickness,0.2*Math.max.apply(Math,slide_thickness));
+
         
         // need the x-range of the body points (nonzero elements in thresholded thickness.)
         var slide_area_l = 0;
@@ -613,15 +668,24 @@ playState.prototype = {
     
     checkBalls: function (ball_array,x_array,surf_array){
         // iterate through ball array and kill any that are below surf_array
-        // canvas units for all input arrays
+        // canvas units for all input arrays. Also count how many are stationary.
+        var n_stopped = 0;
+        
         for (b=0;b<ball_array.length;b++) {
             
-            bb = ball_array[b];
+            var bb = ball_array[b];
+            
+            // count stationary
+            if (bb.body.velocity.x == 0 && bb.body.velocity.y == 0) {n_stopped++};
+            
             if ( bb.x >= worldW-0.5*bb.width || bb.y > this.interp1(x_array,surf_array,bb.x) ) {
                 bb.destroy();
                 ball_array.splice(b,1);
             }
+            
         } // for b
+        
+        return n_stopped;
 
     },
     
@@ -688,7 +752,7 @@ playState.prototype = {
         soil_surface_canvas = this.arrayScale(soil_surface,dy_canvas,worldH);
         this.drawgraphic(soil_graphic,bot_pts,this.two1dto2d(x_axis_canvas,soil_surface_canvas),soilclr);
         
-        //if(showdotmode){
+        g.world.bringToTop(soil_graphic);
         g.world.bringToTop(dotGroup);
         g.world.bringToTop(bedrock_graphic);
 
@@ -700,6 +764,47 @@ playState.prototype = {
         changeFlag = false;
     },
     
+    restoreSurface: function(x_axis,surf,balls) {
+        
+        // find thickness of ball deposits
+        var deposit_thickness = this.depositThickness(x_axis,surf,balls,5);        
+        var new_surface = this.arrayAdd(surf,deposit_thickness,1);
+        console.log(deposit_thickness);
+        return new_surface;
+        
+    },
+    
+    depositThickness: function(xarr,yarr,points,wdw) {
+        
+        var hx = this.zeros(xarr.length);
+
+        var dpMax, npt, xi;
+
+        for (var i=0; i<xarr.length; i++) {
+            // find the upper surface of landslide balls that lie within the range defined by xi and wdw. note that ball positions are defined by canvas coordinates because they have physics bodies.
+
+            xi = xarr[i]; 
+            dpMax = yarr[i]*dy_canvas+worldH; // convert to canvas units
+            npt = 0;
+            for (var j=0; j<points.length; j++) {
+
+                if (points[j].x/dx_canvas >= xi-0.5*wdw && points[j].x/dx_canvas <= xi+0.5*wdw) {
+                    npt++;
+                    if (points[j].y < dpMax) {
+                        dpMax = points[j].y;  // here in canvas units
+                    }
+                }
+
+            } // for j
+
+            if (npt > 0) {
+                hx[i] = -(worldH-dpMax)/dy_canvas-yarr[i];   // convert to physical units for return
+            }
+        }     // for i
+    
+        return hx;
+        
+    },
     
 /* CALLBACKS and INPUT EVENTS */    
     
@@ -764,7 +869,7 @@ playState.prototype = {
     landslideListener: function() {
         
         var failing = dots.filter( function(d) {return d.FS < 1} );
-        if (failing.length > 0.01 * dots.length) { this.doLandslide() };
+        if (failing.length > 0.01 * dots.length && activeLS == false) { this.doLandslide() };
         console.log(failing.length)
         
     },
@@ -946,8 +1051,8 @@ playState.prototype = {
 
                 if (points[j].x >= xi-0.5*wdw && points[j].x <= xi+0.5*wdw && points[j].FS < 1) {
                     npt++;
-                    if (dots[j].depth > dpMax) {
-                        dpMax = dots[j].depth;
+                    if (points[j].depth > dpMax) {
+                        dpMax = points[j].depth;
                     }
                 }
 
@@ -983,7 +1088,7 @@ playState.prototype = {
 
                 if (points[j].x >= xi-0.5*wdw && points[j].x <= xi+0.5*wdw && points[j].FS < 1) {
                     npt++;
-                    dpRunning += dots[j].depth;
+                    dpRunning += points[j].depth;
                 }
 
             } // for j
