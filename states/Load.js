@@ -31,6 +31,8 @@ preload: function(){
   g.load.script('threshold', 'js/phaser-ce-2.10.0/filters/Threshold.js');
 },
 create: function() {
+  g.add.text(g.world.width/2-20, g.world.height/2, "Loading...", {fill: "#CCCCff"});
+
   g.state.start('play');
 }
 

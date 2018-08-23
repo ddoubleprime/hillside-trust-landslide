@@ -10,7 +10,7 @@ var y_base, soil_surface, bedrock_surface;
 var surf_amp=10,surf_wavelength=25,surf_shift=125;
 var dx_canvas, dy_canvas, x_axis_canvas, soil_surface_canvas, bedrock_surface_canvas, y_base_canvas;
 var soil_thickness, soil_surface_old;
-var HrField = document.getElementById("Hreg");	// pull reg height from HTML slider
+//var HrField = document.getElementById("Hreg");	// pull reg height from HTML slider
 var Hr = 2.5;//Number(HrField.value);
 
 var rho_r = 1500;
@@ -140,7 +140,7 @@ playState.prototype = {
         lkey.onDown.add(this.doLandslide, this);
         hkey.onDown.add(function() {this.newHouse(worldW/2,10)}, this);
         rkey.onDown.add(this.toggleRain, this);
-//        qkey.onDown.addOnce(function(){ g.state.remove(g.state.current); g.state.start('play')});
+        //qkey.onDown.addOnce(function(){  g.state.start('play')});
 
         /* CREATE: SURFACE ARRAYS */
         
