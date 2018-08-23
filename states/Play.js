@@ -4,10 +4,10 @@ var x_axis;
 var soil_graphic,bedrock_graphic;
 var bot_pts, top_pts;
 var soilclr = 0x998355, rockclr = 0x333333;
-var dx = 1, VE = 2;     // x-spacing in grid units, vertical exaggeration
+var dx = 1, VE = 2.5;     // x-spacing in grid units, vertical exaggeration
 var worldW = 603, worldH = 504;
 var y_base, soil_surface, bedrock_surface;
-var surf_amp=20,surf_wavelength=50,surf_shift=0;
+var surf_amp=10,surf_wavelength=25,surf_shift=125;
 var dx_canvas, dy_canvas, x_axis_canvas, soil_surface_canvas, bedrock_surface_canvas, y_base_canvas;
 var soil_thickness, soil_surface_old;
 var HrField = document.getElementById("Hreg");	// pull reg height from HTML slider
@@ -21,6 +21,7 @@ var dots = [];
 var dotGroup;
 var ptDensity = 1;   // points per sq phys unit
 var showdotmode = true;
+var house;
 
 var ksat = 0.1;        // infiltration rate / conductivity term, scales the rate of progress of the wetting front
 var defaultCohesion = 5000, defaultSaturation = 0.25, defaultPhi = 24, slopeWindowFactor = 2;
@@ -45,7 +46,8 @@ var adding_shovel, digging_shovel, landslide_shovel, active_shovel;
 
 var esckey;
 var slide_body;
-var lkey, hkey, rkey;
+var lkey, hkey, rkey, qkey;
+
 
 
 var playState = function (game) {
@@ -76,8 +78,8 @@ playState.prototype = {
         lkey = g.input.keyboard.addKey(Phaser.Keyboard.L);
         hkey = g.input.keyboard.addKey(Phaser.Keyboard.H);
         rkey = g.input.keyboard.addKey(Phaser.Keyboard.R);
-        
-        
+        qkey = g.input.keyboard.addKey(Phaser.Keyboard.Q);
+
         rain_emitter = g.add.emitter(g.world.centerX, 0, 400);
         this.rainemitter(rain_emitter);
         
@@ -90,7 +92,7 @@ playState.prototype = {
         dumpButton.scale.setTo(0.3, 0.3);
         dumpButton.alpha = 0.8;
         
-        houseButton = g.add.button(worldW-170, 20, 'housebtn', function() {this.newHouse(worldW/2,10)}, this,1,2,1,1);
+        houseButton = g.add.button(worldW-170, 20, 'housebtn', this.houseButtonClick, this,1,2,1,1);
         houseButton.scale.setTo(0.8, 0.8);        
         
         rainButton = g.add.button(10, 10, 'rain_button', null, null, 1, 3, 2, 3);
@@ -127,20 +129,19 @@ playState.prototype = {
         g.physics.box2d.gravity.y = -dy_canvas*9.81;
         g.physics.box2d.density = 2000;
         g.physics.box2d.friction = 0.5;
-        g.physics.box2d.restitution = 0.1;
+        g.physics.box2d.restitution = 0.2;
         // word bounds for physics
         //g.world.setBounds(-100, 0, worldW+100, worldH);
         g.physics.box2d.setBoundsToWorld();
         g.physics.box2d.collideWorldBounds = false;
-
-        //g.debug.box2dWorld();
         
         console.log(g.physics.box2d);
         
         lkey.onDown.add(this.doLandslide, this);
         hkey.onDown.add(function() {this.newHouse(worldW/2,10)}, this);
         rkey.onDown.add(this.toggleRain, this);
-        
+//        qkey.onDown.addOnce(function(){ g.state.remove(g.state.current); g.state.start('play')});
+
         /* CREATE: SURFACE ARRAYS */
         
         // prepare the bedrock surface array
@@ -164,16 +165,16 @@ playState.prototype = {
         
         /* Scenario-specific placement */
         
-        for (i=60;i<80;i++) {
+        for (i=10;i<20;i++) {
             // flat spot
-            soil_surface[i] = soil_surface[60];
+            soil_surface[i] = soil_surface[10];
         }
                 
-        for (i=80;i<85;i++) {
-            // smooth edge
-            soil_surface[i] = soil_surface[85];
+        for (i=83;i<87;i++) {
+            // crick
+            soil_surface[i] = soil_surface[87]-0.71;
         }
-        var house = this.newHouse(0.7*worldW, 210);
+        house = this.newHouse(0.12*worldW, 130);
         
         /* End scenario modifications */
         
@@ -248,15 +249,6 @@ playState.prototype = {
         } // shovelmode
         
         
-         if (changeFlag == true) {
-             
-             this.updateLandscapeGraphics();
-             this.pointsInArea(ptDensity,x_axis,soil_surface,soil_surface_old);
-             soil_surface_old = this.arrayScale(soil_surface,1,0);  // resets this to the new soil_surface
-             dots = this.updateAnalysisPoints(dots);
-            
-         }   // changeFlag
-        
         if (activeLS) {
             var n_stopped = this.checkBalls( active_ls_balls,x_axis_canvas, this.arrayMin(soil_surface_canvas,bedrock_surface_canvas) );
             
@@ -267,12 +259,14 @@ playState.prototype = {
                     slideStopTime = ti.ms+0;
                 }
                 
-                if (slideStopFlag == true && ti.ms-slideStopTime > 2500) {
+                if (slideStopFlag == true && ti.ms-slideStopTime > 1500) {
                     activeLS = false;
                     slideStopFlag = false;
                     console.log('recovering surface!')
                     soil_surface = this.restoreSurface(x_axis,soil_surface,active_ls_balls);
-                    changeFlag = true;
+                    this.doSurfaceChangedUpdates();
+
+                    //changeFlag = true;
                 }
                 
             } else if (n_stopped != active_ls_balls.length && slideStopFlag == true) { 
@@ -282,6 +276,12 @@ playState.prototype = {
             
             if (this.isEmpty(active_ls_balls)) {activeLS = false; slideStopFlag = false;}
         }
+        
+        if (changeFlag == true) {
+             
+                this.doSurfaceChangedUpdates();
+            
+         }   // changeFlag
 
     },
 
@@ -583,10 +583,18 @@ playState.prototype = {
         
     
     },
+    
+    doSurfaceChangedUpdates: function () {
+        this.updateLandscapeGraphics();
+        this.pointsInArea(ptDensity,x_axis,soil_surface,soil_surface_old);
+        soil_surface_old = this.arrayScale(soil_surface,1,0);  // resets this to the new soil_surface
+        this.checkBalls( active_ls_balls,x_axis_canvas, this.arrayMin(soil_surface_canvas,bedrock_surface_canvas) );
+        dots = this.updateAnalysisPoints(dots);
+    },
  
-    doLandslide: function() {
+    doLandslide: function () {
         
-        var slide_thickness = this.failurePlane(x_axis,dots,5*dx);
+        var slide_thickness = this.failurePlane(x_axis,dots,6*dx);
 
         var trash;
         [slide_thickness, trash] = this.arrayThresh(slide_thickness,0.1*Math.max.apply(Math,slide_thickness));
@@ -610,7 +618,7 @@ playState.prototype = {
         var slide_base_padded = this.arrayScale(post_ls_surface,1,0.001);
         
         // before passing the base array to slidebodytoballs, need to isolate the part of the body that is above the bedrock surface
-        var ballsize = 4;  // px
+        var ballsize = 6;  // px
         var newballs = this.slideBodyToBalls( slide_thickness,slide_base_padded,slide_area_l,slide_area_r, ballsize );
         
         // add new balls to balls array
@@ -618,8 +626,9 @@ playState.prototype = {
         
         // update the soil surface using these points (as normal)
         soil_surface = post_ls_surface;        
-        this.updateLandscapeGraphics();
-        dots = this.updateAnalysisPoints(dots);
+
+        this.doSurfaceChangedUpdates();
+
         
         activeLS = true;
         
@@ -680,7 +689,7 @@ playState.prototype = {
                     var ball = g.add.sprite(bx,by,'clods');
                     ball.frame = clodFrame;
                     //var ball = g.add.sprite(bx,by,)
-                    ball.width = 4*ballsize; ball.height = 4*ballsize;
+                    ball.width = 3*ballsize; ball.height = 3*ballsize;
                     ball.tint = soilclr;
                     ball.anchor.x = 0.5; ball.anchor.y = 0.5;
 
@@ -693,6 +702,7 @@ playState.prototype = {
                     ball.body.friction = 0.7;
                     ball.body.angularDamping = 0.5;
                     ball.body.angle = Math.random()*360;
+                    ball.body.restitution = 0.1
 
                     ball_container.push(ball);
                 
@@ -783,7 +793,8 @@ playState.prototype = {
     restoreSurface: function(x_axis,surf,balls) {
         
         // find thickness of ball deposits
-        var deposit_thickness = this.depositThickness(x_axis,surf,balls,5);        
+        var deposit_thickness = this.depositThickness(x_axis,surf,balls,5); 
+        deposit_thickness = this.arrayRunningMean(x_axis,deposit_thickness,3)
         var new_surface = this.arrayAdd(surf,deposit_thickness,1);
         return new_surface;
         
@@ -805,8 +816,8 @@ playState.prototype = {
 
                 if (points[j].x/dx_canvas >= xi-0.5*wdw && points[j].x/dx_canvas <= xi+0.5*wdw) {
                     npt++;
-                    if (points[j].y < dpMax) {
-                        dpMax = points[j].y;  // here in canvas units
+                    if (points[j].body.y < dpMax) {
+                        dpMax = points[j].body.y;  // here in canvas units
                     }
                 }
 
@@ -926,6 +937,14 @@ playState.prototype = {
         }
     },
 
+    houseButtonClick: function() {
+        shovelMode = true; 
+        dumpMode = true; 
+        this.toggleShovelMode(); 
+        this.toggleDumpMode(); 
+        this.newHouse(worldW/2,10)
+    },
+    
     mouseDragStart: function() {
 
         g.physics.box2d.mouseDragStart(g.input.mousePointer);
@@ -960,7 +979,7 @@ playState.prototype = {
         
         g.physics.box2d.enable(house);
         // house properties for reference; can use defaults for most objects
-        house.body.setRectangle(house.width*0.9,house.height*0.8);
+        house.body.setRectangle(house.width*0.9,house.height*0.78);
         house.body.collideWorldBounds = false;
         house.outOfBoundsKill = true;
         house.fixedRotation = false; 
@@ -970,7 +989,7 @@ playState.prototype = {
         house.body.friction = 0.9;
         house.body.restitution = 0;
         house.body.mass = 10000; 
-        house.body.density = 1000;
+        house.body.density = 100;
         
         return house;
 

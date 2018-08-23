@@ -25,6 +25,8 @@ Fix:
 2. New points added above a saturating soil (during rain) are not correctly saturating. Existing points behave correctly considering their greater depth
 4. Occasional leftover ball after surface restoration
 5. Slider thickness ignores positve-definite soil thickness when reducing below bedrock
+6. After slide recovery, balls do not properly kill upon being below the surface
+7. After slide recovery, analysis points are not replaced correctly. Could be a canvas/world scaling thing.
 
 Sprite work:
 
