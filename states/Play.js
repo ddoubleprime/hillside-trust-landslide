@@ -7,7 +7,7 @@ var soilclr = 0x998355, rockclr = 0x333333;
 var dx = 1, VE = 2.5;     // x-spacing in grid units, vertical exaggeration
 var worldW = 603, worldH = 504;
 var y_base, soil_surface, bedrock_surface;
-var surf_amp=10,surf_wavelength=25,surf_shift=125;
+var surf_amp=10,surf_wavelength=25,surf_shift=0;
 var dx_canvas, dy_canvas, x_axis_canvas, soil_surface_canvas, bedrock_surface_canvas, y_base_canvas;
 var soil_thickness, soil_surface_old;
 //var HrField = document.getElementById("Hreg");	// pull reg height from HTML slider
@@ -62,6 +62,8 @@ playState.prototype = {
         tiEvent = g.time.create();
         background = g.add.image(0, 0, 'sky_dust');
         //bedrock = g.add.sprite(0, 230, 'bedrock');
+        rain_emitter = g.add.emitter(g.world.centerX, 0, 400);
+        this.rainemitter(rain_emitter);
         soil_graphic = g.add.graphics(0, 0);
         bedrock_graphic = g.add.graphics(0, 0);
         slide_body = g.add.graphics(0, 0);
@@ -80,8 +82,7 @@ playState.prototype = {
         rkey = g.input.keyboard.addKey(Phaser.Keyboard.R);
         qkey = g.input.keyboard.addKey(Phaser.Keyboard.Q);
 
-        rain_emitter = g.add.emitter(g.world.centerX, 0, 400);
-        this.rainemitter(rain_emitter);
+
         
         
         shovelButton = g.add.button(worldW-95, 80, 'shovel', this.toggleShovelMode, this,1,3,2,3);
@@ -163,7 +164,7 @@ playState.prototype = {
         bot_pts = this.two1dto2d(x_axis_canvas,y_base_canvas);
         
         
-        /* Scenario-specific placement */
+        /* Scenario-specific placement 
         
         for (i=10;i<20;i++) {
             // flat spot
@@ -176,7 +177,7 @@ playState.prototype = {
         }
         house = this.newHouse(0.12*worldW, 130);
         
-        /* End scenario modifications */
+         End scenario modifications */
         
 
         this.updateLandscapeGraphics();
@@ -778,7 +779,9 @@ playState.prototype = {
         soil_surface_canvas = this.arrayScale(soil_surface,dy_canvas,worldH);
         this.drawgraphic(soil_graphic,bot_pts,this.two1dto2d(x_axis_canvas,soil_surface_canvas),soilclr);
         
-        g.world.bringToTop(soil_graphic);
+        
+        //g.world.bringToTop(soil_graphic);
+        //g.world.bringToTop(active_ls_balls);
         g.world.bringToTop(dotGroup);
         g.world.bringToTop(bedrock_graphic);
 

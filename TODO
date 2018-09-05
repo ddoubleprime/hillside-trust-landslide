@@ -5,12 +5,15 @@ Implement:
 1. Grading shovel that smooths an area
 2. Measurement tools
     - slope, saturation, cohesion
-3. Adjust saturation/drain rates to better match world time, and adjust world time rate
+3. Reset button
+4. Adjust saturation/drain rates to better match world time, and adjust world time rate
 5. Trees and other local point modifiers (proximity modifier object class, usable for drains, trees, roads, etc.)
     - proximity method returns all analysis points within a radius
     - scale effect by distance 
 6. River object. Where the bedrock is at a local minimum, uses a shovel to dig soil to zero there and attaches a kill zone for physics bodies that reach the "river".
 7. Display scale bars H and V
+8. Fade during surface restoration to remove sudden jump.
+    - stroke over relevant portion of surface
 10. Disable dragging while in shovel or dump mode
 12. Change thickness slider to a +/- soil everywhere button that adds a fixed increment per click    
 13. Juice! 
@@ -28,7 +31,7 @@ Fix:
 1. Slide surface recovery can hang for a while.
 2. New points added above a saturating soil (during rain) are not correctly saturating. Existing points behave correctly considering their greater depth
 3. Sometimes, points do not saturate if rain starts shortly after load
-4. Occasional leftover ball after surface restoration
+4. Dog slow on SOME Windows 10 machines.
 5. Slider thickness ignores positve-definite soil thickness when reducing below bedrock
 6. After slide recovery, balls do not properly kill upon being below the surface
 7. Double check FS equation. 
@@ -43,7 +46,7 @@ Code style work:
 2. Parameters to interface
 3. Make sure scoping is correct overall for modularity
 4. Implement modularity using prototype function and JSON in the playState definition
-
+5. Incompatible with all vesions of IE due to lack of ES6 support. Array.fill() is one culprit; refactor if changes are few and don't impact performance, otherwise use Babel transpiler.
 
 DONE:
 
@@ -93,6 +96,7 @@ DONE:
 √ house less tall
 √ house physics poly to match shape
 √ After slide recovery, analysis points are not replaced correctly. Could be a canvas/world scaling thing.
+√ Occasional leftover ball after surface restoration (decided this was a feature)
     
         
 DEPRECATED NOTES
