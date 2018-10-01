@@ -7,7 +7,7 @@ var soilclr = 0x998355, rockclr = 0x333333;
 var dx = 1, VE = 2.5;     // x-spacing in grid units, vertical exaggeration
 var worldW = 603, worldH = 504;
 var y_base, soil_surface, bedrock_surface;
-var surf_amp=10,surf_wavelength=25,surf_shift=125;
+var surf_amp=10,surf_wavelength=250,surf_shift=125;
 var dx_canvas, dy_canvas, x_axis_canvas, soil_surface_canvas, bedrock_surface_canvas, y_base_canvas;
 var soil_thickness, soil_surface_old;
 //var HrField = document.getElementById("Hreg");	// pull reg height from HTML slider
@@ -31,7 +31,7 @@ var timeKeeper, nowTime, worldTime = 0;
 var timeDisplay, rainDisplay, rainTime, rainStartTime;
 var slopetext, saturationtext, FStext;
 var checkForLSInterval = 3000, queryInterval = 200;     // in ms
-        
+
 var physBoxTest;
 var box2d;
 
@@ -51,14 +51,13 @@ var esckey;
 var slide_body;
 var lkey, hkey, rkey, qkey, onekey, twokey;
 
+var playState2 = function (game) {
 
-
-var playState = function (game) {
 
 };
 
 
-playState.prototype = {
+playState2.prototype = {
 
     create: function () {
         ti = g.time.create();
@@ -72,9 +71,9 @@ playState.prototype = {
         slide_body = g.add.graphics(0, 0);
         timeDisplay = g.add.text(worldW/2, 5, [], { fill: '#001122', font: '14pt Arial' });
         timeDisplay.visible = false;
-        slopetext = g.add.text(worldW/5-30, 13, "Slope gradient:",  { font: '14pt Arial', fill: '#001155' });
-        saturationtext = g.add.text(worldW/5-30, 33, "Saturation:",  { font: '14pt Arial', fill: '#001155' });
-        FStext = g.add.text(worldW/5-30, 53, "Factor of Safety:",  { font: '14pt Arial', fill: '#001155' });
+        slopetext = g.add.text(worldW/5, 5, "Slope gradient:",  { font: '14pt Arial', fill: '#001155' });
+        saturationtext = g.add.text(worldW/5, 25, "Saturation:",  { font: '14pt Arial', fill: '#001155' });
+        FStext = g.add.text(worldW/5, 45, "Factor of Safety:",  { font: '14pt Arial', fill: '#001155' });
         this.infoToggle(infoMode);
         
         
@@ -91,6 +90,7 @@ playState.prototype = {
         onekey = g.input.keyboard.addKey(Phaser.Keyboard.ONE);
         twokey = g.input.keyboard.addKey(Phaser.Keyboard.TWO);
 
+
         
         
         shovelButton = g.add.button(worldW-95, 80, 'shovel', this.toggleShovelMode, this,1,3,2,3);
@@ -104,10 +104,10 @@ playState.prototype = {
         houseButton = g.add.button(worldW-170, 20, 'housebtn', this.houseButtonClick, this,1,2,1,1);
         houseButton.scale.setTo(0.8, 0.8);        
         
-        //treeButton = g.add.button(worldW-170, 80, 'trees1', this.treesOn, this, 2, 1, 0);
-        //treeButton.scale.setTo(0.5, 0.5);
+        treeButton = g.add.button(worldW-170, 80, 'trees1', this.treesOn, this, 2, 1, 0);
+        treeButton.scale.setTo(0.5, 0.5);
         
-        infoButton = g.add.button(worldW-165, 88, 'info', this.inspectPoints, this, 2, 1, 0);
+        infoButton = g.add.button(worldW-90, 160, 'info', this.inspectPoints, this, 2, 1, 0);
         infoButton.scale.setTo(0.02, 0.02);
         
         rainButton = g.add.button(10, 10, 'rain_button', null, null, 1, 3, 2, 3);
@@ -155,8 +155,10 @@ playState.prototype = {
         lkey.onDown.add(this.doLandslide, this);
         hkey.onDown.add(function() {this.newHouse(worldW/2,10)}, this);
         rkey.onDown.add(this.toggleRain, this);
+        onekey.onDown.addOnce(function(){  g.state.start('play')});
         twokey.onDown.addOnce(function(){  g.state.start('play2')});
 
+        
         /* CREATE: SURFACE ARRAYS */
         
         // prepare the bedrock surface array
@@ -180,16 +182,6 @@ playState.prototype = {
         
         /* Scenario-specific placement */
         
-        for (i=10;i<20;i++) {
-            // flat spot
-            soil_surface[i] = soil_surface[10];
-        }
-                
-        for (i=83;i<87;i++) {
-            // crick
-            soil_surface[i] = soil_surface[87]-0.71;
-        }
-        house = this.newHouse(0.12*worldW, 130);
         
        /*  End scenario modifications */
         
@@ -250,10 +242,11 @@ playState.prototype = {
         } // shovelmode
         
         if (infoMode) {
-            if (!shovelMode && !dumpMode && !this.overButton() && g.input.mousePointer.isDown) {
+            if (!shovelMode & !dumpMode & !this.overButton() && g.input.mousePointer.isDown) {
                 var pickX = g.input.mousePointer.x;
                 var pickY = g.input.mousePointer.y;
-                infoPoint = this.findNearestPoint(pickX, pickY);
+                infoPoint = this.findNearestPoint(pickX, pickY)
+
             }
                 this.infoShower(infoPoint);
         }
@@ -699,7 +692,7 @@ playState.prototype = {
                     var ball = g.add.sprite(bx,by,'clods');
                     ball.frame = clodFrame;
                     //var ball = g.add.sprite(bx,by,)
-                    ball.width = 2.5*ballsize; ball.height = 2.5*ballsize;
+                    ball.width = 3*ballsize; ball.height = 3*ballsize;
                     ball.tint = soilclr;
                     ball.anchor.x = 0.5; ball.anchor.y = 0.5;
 
@@ -836,7 +829,7 @@ playState.prototype = {
             } // for j
 
             if (npt > 0) {
-                hx[i] = -(worldH-dpMax)/dy_canvas-yarr[i]-.1;   // convert to physical units for return
+                hx[i] = -(worldH-dpMax)/dy_canvas-yarr[i];   // convert to physical units for return
             }
         }     // for i
     
@@ -1176,7 +1169,7 @@ playState.prototype = {
         
     failurePlane: function (xarr,points,wdw) {
         /* This function, given the subset of ground test points that are failing, determines 
-        whether enough nearby points are failing to interpolate a landslide surface across them. It returns an array of size(x_axis) with the depth of the failure plane in the appropriate elements, or zero where there is no failure.
+        whether enough nearby points are failing to interpolate a landslide surface across them. It returns an array of size(x_axis) with the depth of the failure plane in the appropriate elements, or zero wherethere is no failure.
 
         inputs: points: array of analysis point objects; x_axis: x-coordinates of ground surface points wdw: window around each column to count points
         returns: hx: array of size(x_axis) with depth of failure surface at each surface x-coordinate */        
@@ -1213,7 +1206,7 @@ playState.prototype = {
     
     failurePlaneMean: function (xarr,points,wdw) {
         /* This function, given the subset of ground test points that are failing, determines 
-        whether enough nearby points are failing to interpolate a landslide surface across them. It returns an array of size(x_axis) with the depth of the failure plane in the appropriate elements, or zero where there is no failure.
+        whether enough nearby points are failing to interpolate a landslide surface across them. It returns an array of size(x_axis) with the depth of the failure plane in the appropriate elements, or zero wherethere is no failure.
 
         inputs: points: array of analysis point objects; x_axis: x-coordinates of ground surface points wdw: window around each column to count points
         returns: hx: array of size(x_axis) with depth of failure surface at each surface x-coordinate */        
@@ -1288,8 +1281,8 @@ playState.prototype = {
     
     findNearestPoint: function (xpoint, ypoint) {
       var dist;
-      var close = 10;
-      var r = infoPoint;
+      var close = 1000;
+      var r;
       for(var t = 0; t < dots.length-1; t++){
         dist = Phaser.Math.distance(xpoint, ypoint, dots[t].x * dx_canvas, worldH+dots[t].y * dy_canvas);
         if(close > dist){
