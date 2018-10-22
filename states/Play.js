@@ -4,22 +4,22 @@ var x_axis;
 var soil_graphic,bedrock_graphic;
 var bot_pts, top_pts;
 var soilclr = 0x998355, rockclr = 0x333333;
-var dx = 1, VE = 2.5;     // x-spacing in grid units, vertical exaggeration
+var dx = 1, VE;     // x-spacing in grid units, vertical exaggeration
 var worldW = 603, worldH = 504;
 var y_base, soil_surface, bedrock_surface;
-var surf_amp=10,surf_wavelength=25,surf_shift=125;
+var surf_amp=15,surf_wavelength=25,surf_shift=127;
 var dx_canvas, dy_canvas, x_axis_canvas, soil_surface_canvas, bedrock_surface_canvas, y_base_canvas;
 var soil_thickness, soil_surface_old;
 //var HrField = document.getElementById("Hreg");	// pull reg height from HTML slider
-var Hr = 2.5;//Number(HrField.value);
+var Hr;
 
 var rho_r = 1500;
 var rho_w = 1000;
 var grav = 9.81;
 
-var dots = [];
+var dots;
 var dotGroup;
-var ptDensity = 1;   // points per sq phys unit
+var ptDensity = .9;   // points per sq phys unit
 var showdotmode = true;
 var house, tree;
 
@@ -30,7 +30,7 @@ var ti, tiEvent, timeRate = 10000;  // ms per real-world time unit
 var timeKeeper, nowTime, worldTime = 0;
 var timeDisplay, rainDisplay, rainTime, rainStartTime;
 var slopetext, saturationtext, FStext;
-var checkForLSInterval = 3000, queryInterval = 200;     // in ms
+var checkForLSInterval = 3000, queryInterval = 250;     // in ms
         
 var physBoxTest;
 var box2d;
@@ -39,12 +39,12 @@ var shovelMode = false;
 var dumpMode = false;
 var infoMode = false;
 var infoPoint = 0;
-var shovelButton, dumpButton, rainButton, houseButton, treeButton, infoButton;
+var shovelButton, dumpButton, rainButton, houseButton, treeButton, infoButton, menuButton, resetButton;
 var rainFlag = false;
 var changeFlag = false;
 var activeLS = false, newLS = false, slideStopFlag = false;
 var slideStopTime = 0;
-var active_ls_balls = [];
+var active_ls_balls;
 var adding_shovel, digging_shovel, landslide_shovel, active_shovel;
 
 var esckey;
@@ -54,7 +54,7 @@ var lkey, hkey, rkey, qkey, onekey, twokey;
 
 
 var playState = function (game) {
-
+    
 };
 
 
@@ -91,7 +91,8 @@ playState.prototype = {
         onekey = g.input.keyboard.addKey(Phaser.Keyboard.ONE);
         twokey = g.input.keyboard.addKey(Phaser.Keyboard.TWO);
 
-        
+        Hr = 2.5;//Number(HrField.value);
+        VE = 1.8;
         
         shovelButton = g.add.button(worldW-95, 80, 'shovel', this.toggleShovelMode, this,1,3,2,3);
         shovelButton.scale.setTo(0.25, 0.25);
@@ -114,8 +115,16 @@ playState.prototype = {
         rainButton.scale.setTo(0.6, 0.6);
         rainButton.onInputDown.add(this.toggleRain, this)
         rainButton.onInputUp.add(this.toggleRain, this)
-                
+        
+        menuButton = g.add.button(worldW-95, 180, 'menu_button', function(){g.state.start('menu')}, this,1,3,2,3);
+        menuButton.scale.setTo(0.6, 0.6); 
+        
+        resetButton = g.add.button(worldW-95, 210, 'reset_button', function(){g.state.start('play')}, this,1,3,2,3);
+        resetButton.scale.setTo(0.6, 0.6); 
+        
+        dots = new Array(0);
         dotGroup = g.add.group();
+        active_ls_balls = new Array(0);
 
         adding_shovel = new this.Shovel(3,-2); // (w,d)
         digging_shovel = new this.Shovel(2,2);
@@ -155,7 +164,7 @@ playState.prototype = {
         lkey.onDown.add(this.doLandslide, this);
         hkey.onDown.add(function() {this.newHouse(worldW/2,10)}, this);
         rkey.onDown.add(this.toggleRain, this);
-        twokey.onDown.addOnce(function(){  g.state.start('play2')});
+        twokey.onDown.addOnce(function() {g.state.start('play2')} );
 
         /* CREATE: SURFACE ARRAYS */
         
@@ -166,7 +175,7 @@ playState.prototype = {
         bedrock_surface_canvas = this.arrayScale(bedrock_surface,dy_canvas,worldH);
         
         // prepare the soil surface array
-        soil_surface = this.arrayScale(bedrock_surface,1,Hr);
+        soil_surface = this.arrayScale(bedrock_surface,0.96,Hr);
         soil_surface_old = this.arrayScale(soil_surface,1,0);  // makes a copy of soil_surface
 
         // assign physics bodies and properties        
@@ -180,14 +189,14 @@ playState.prototype = {
         
         /* Scenario-specific placement */
         
-        for (i=10;i<20;i++) {
+        for (i=2;i<22;i++) {
             // flat spot
-            soil_surface[i] = soil_surface[10];
+            soil_surface[i] = soil_surface[2];
         }
                 
-        for (i=83;i<87;i++) {
+        for (i=85;i<89;i++) {
             // crick
-            soil_surface[i] = soil_surface[87]-0.71;
+            soil_surface[i] = soil_surface[89]-0.71;
         }
         house = this.newHouse(0.12*worldW, 130);
         
@@ -276,7 +285,7 @@ playState.prototype = {
                     soil_surface = this.restoreSurface(x_axis,soil_surface,active_ls_balls);
                     this.doSurfaceChangedUpdates();
 
-                    //changeFlag = true;
+                    changeFlag = true;
                 }
                 
             } else if (n_stopped != active_ls_balls.length && slideStopFlag == true) { 
@@ -598,8 +607,9 @@ playState.prototype = {
         this.updateLandscapeGraphics();
         this.pointsInArea(ptDensity,x_axis,soil_surface,soil_surface_old);
         soil_surface_old = this.arrayScale(soil_surface,1,0);  // resets this to the new soil_surface
-        this.checkBalls( active_ls_balls,x_axis_canvas, this.arrayMin(soil_surface_canvas,bedrock_surface_canvas) );
+        this.checkBalls( active_ls_balls,x_axis_canvas,            this.arrayMin(soil_surface_canvas,bedrock_surface_canvas) );
         dots = this.updateAnalysisPoints(dots);
+        changeFlag = false;
     },
  
     doLandslide: function () {
@@ -734,7 +744,7 @@ playState.prototype = {
             // count stationary
             if (bb.body.velocity.x < 0.1 && bb.body.velocity.y < 0.1) {n_stopped++};
             
-            if ( bb.x >= worldW || bb.y > this.interp1(x_array,surf_array,bb.x) ) {
+            if ( bb.x >= worldW || bb.y+2 > this.interp1(x_array,surf_array,bb.x) ) {
                 bb.destroy();
                 ball_array.splice(b,1);
             }
@@ -799,7 +809,6 @@ playState.prototype = {
         soil_graphic.body.setChain(bodypoly);
         soil_graphic.body.static = true;
 
-        changeFlag = false;
     },
     
     restoreSurface: function(x_axis,surf,balls) {
@@ -836,7 +845,7 @@ playState.prototype = {
             } // for j
 
             if (npt > 0) {
-                hx[i] = -(worldH-dpMax)/dy_canvas-yarr[i]-.1;   // convert to physical units for return
+                hx[i] = -(worldH-dpMax)/dy_canvas-yarr[i]-.4;   // convert to physical units for return
             }
         }     // for i
     
@@ -1135,8 +1144,10 @@ playState.prototype = {
 
           } // for i = points
         if (infoMode) {
+          if (points[infoPoint]) {
               points[infoPoint].scale = 6;
-              points[infoPoint].color = 0xFFFF00;          
+              points[infoPoint].color = 0xFFFF00;         
+          }
         }
             
           points = points.filter(function(pt) {return pt.alive});
@@ -1263,7 +1274,10 @@ playState.prototype = {
         } else {point.satDepth=0} 
 
         point.saturation -= 0.5 * (queryInterval/timeRate)*point.saturation;
-                
+        
+        if (point.saturation > 1) {point.saturation = 1};
+        if (point.saturation < 0) {point.saturation = 0}; // should not happen
+        
     },
 
     colorAnalysisPoint: function(FS) {
@@ -1288,7 +1302,7 @@ playState.prototype = {
     
     findNearestPoint: function (xpoint, ypoint) {
       var dist;
-      var close = 10;
+      var close = 20;
       var r = infoPoint;
       for(var t = 0; t < dots.length-1; t++){
         dist = Phaser.Math.distance(xpoint, ypoint, dots[t].x * dx_canvas, worldH+dots[t].y * dy_canvas);
@@ -1302,9 +1316,14 @@ playState.prototype = {
     },
     
     infoShower: function (r) {
-         slopetext.setText("Slope gradient: "+Math.round(dots[r].theta*100)/100);
-         saturationtext.setText("Saturation: "+Math.round(dots[r].saturation * 100)+"%" );
-         FStext.setText("Factor of Safety: "+Math.round(dots[r].FS*10)/10);
+        if (dots[r]) {
+            var slp_tan = Math.round( Math.tan(dots[r].theta)*100)/100;
+            var slp_recip = Math.round( 10/slp_tan ) / 10;
+            var slp_deg = Math.round( this.rad2Deg(dots[r].theta) );
+            slopetext.setText("Slope gradient: "+slp_deg+"º ("+slp_recip+":1)");
+            saturationtext.setText("Saturation: "+Math.round(dots[r].saturation * 100)+"%" );
+            FStext.setText("Factor of Safety: "+Math.round(dots[r].FS*10)/10);
+        }
     },
 
     infoToggle: function (show_info) {

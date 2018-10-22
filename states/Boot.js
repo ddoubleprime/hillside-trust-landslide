@@ -8,7 +8,7 @@ var bootState = {
     g.physics.box2d.restitution = 0.2;
     g.physics.box2d.gravity.y = 250;
 
-    g.add.text(g.world.width/2-20, g.world.height/2, "Loading...", {fill: "#CCCCff"});
+    g.add.text(g.world.width/2-30, g.world.height/2-20, "Loading...", {fill: "#CCCCff"});
 
     g.state.start('load');
 

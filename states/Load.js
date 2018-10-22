@@ -9,6 +9,11 @@ preload: function(){
   //g.load.image('rain_ov', 'ls-assets/button_rain_ov.png');
   //g.load.image('rain_up', 'ls-assets/button_rain_up.png');
   g.load.spritesheet('rain_button','ls-assets/button_rain.png',112,112)
+  g.load.spritesheet('menu_button','ls-assets/button_menu.png',111,41)
+  g.load.spritesheet('reset_button','ls-assets/button_reset.png',111,41)
+  g.load.spritesheet('scene1_button','ls-assets/buttons_scenarios-01.png',222,82)
+  g.load.spritesheet('scene2_button','ls-assets/buttons_scenarios-02.png',222,81)
+    
   g.load.image('cloud1', 'ls-assets/cloud1.png');
   g.load.image('cloud2', 'ls-assets/cloud2.png');
   g.load.image('grass', 'ls-assets/grass.png');
@@ -33,7 +38,7 @@ preload: function(){
 create: function() {
   g.add.text(g.world.width/2-20, g.world.height/2, "Loading...", {fill: "#CCCCff"});
 
-  g.state.start('play');
+  g.state.start('menu');
 }
 
 };

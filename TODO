@@ -14,7 +14,9 @@ Implement:
 7. Display scale bars H and V
 8. Fade during surface restoration to remove sudden jump.
     - stroke over relevant portion of surface
+9. Mode mutual exclusivity / rain button switches out of all modes
 10. Disable dragging while in shovel or dump mode
+11. Dynamic window size scaling
 12. Change thickness slider to a +/- soil everywhere button that adds a fixed increment per click    
 13. Juice! 
     - shovel scrape in soil, clink on bedrock
@@ -22,24 +24,28 @@ Implement:
     - landslide rumble
     - rain sound and thunder when raining
 14. Get physics time? Can slow clock to match event time
+15. Blast tool that cuts a bench onto bedrock
 16. Testing on multiple browsers / older browsers to develop a compatibility profile
 17. Performance optimization
 18. Scenario design
+19. Other advanced tools: pilings to bedrock, pier walls, drainage features
 
 Fix:
 
 1. Slide surface recovery can hang for a while.
 2. New points added above a saturating soil (during rain) are not correctly saturating. Existing points behave correctly considering their greater depth
 3. Sometimes, points do not saturate if rain starts shortly after load
-4. Dog slow on SOME Windows 10 machines.
+4. Dog slow on SOME Windows machines.
 5. Slider thickness ignores positve-definite soil thickness when reducing below bedrock
 6. After slide recovery, balls do not properly kill upon being below the surface
 7. Double check FS equation. 
-8. Shoveling with info shower qactove sometimes switches the active dot - related to dot IDs changing on redraw
+8. Shoveling with info shower active switches the active dot - related to dot IDs changing on redraw
+9. Breaks with dx != 1, an array length issue
 
 Sprite work:
 
 1. Improve general appearance of things.
+2. Cursor appearance overlays for tools.
 
 Code style work:
 
@@ -64,7 +70,7 @@ DONE:
     - (problem does not present now that we don't use the LS shovel)
 √ Disallow digging of soil below bedrock surface by shovels?
 √ Analysis point placement and update handling
-    - Dots stay in place relative to soil body (more intuitively physical) and then are destroyed where the LS has ocurred or surfave dug.
+    - Dots stay in place relative to soil body (more intuitively physical) and then are destroyed where the LS has ocurred or surface dug.
 √ Balls generated on zero-thickness soil during LS
     - likely due to analysis points persisting below bedrock?
     - or bug in the thresholder/planefinder

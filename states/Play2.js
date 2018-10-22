@@ -4,22 +4,22 @@ var x_axis;
 var soil_graphic,bedrock_graphic;
 var bot_pts, top_pts;
 var soilclr = 0x998355, rockclr = 0x333333;
-var dx = 1, VE = 2.5;     // x-spacing in grid units, vertical exaggeration
+var dx = 1, VE;     // x-spacing in grid units, vertical exaggeration
 var worldW = 603, worldH = 504;
 var y_base, soil_surface, bedrock_surface;
-var surf_amp=10,surf_wavelength=250,surf_shift=125;
+var surf_slope = 0.4;
 var dx_canvas, dy_canvas, x_axis_canvas, soil_surface_canvas, bedrock_surface_canvas, y_base_canvas;
 var soil_thickness, soil_surface_old;
 //var HrField = document.getElementById("Hreg");	// pull reg height from HTML slider
-var Hr = 2.5;//Number(HrField.value);
+var Hr;
 
 var rho_r = 1500;
 var rho_w = 1000;
 var grav = 9.81;
 
-var dots = [];
+var dots;
 var dotGroup;
-var ptDensity = 1;   // points per sq phys unit
+var ptDensity = .9;   // points per sq phys unit
 var showdotmode = true;
 var house, tree;
 
@@ -30,8 +30,8 @@ var ti, tiEvent, timeRate = 10000;  // ms per real-world time unit
 var timeKeeper, nowTime, worldTime = 0;
 var timeDisplay, rainDisplay, rainTime, rainStartTime;
 var slopetext, saturationtext, FStext;
-var checkForLSInterval = 3000, queryInterval = 200;     // in ms
-
+var checkForLSInterval = 3000, queryInterval = 250;     // in ms
+        
 var physBoxTest;
 var box2d;
 
@@ -39,21 +39,22 @@ var shovelMode = false;
 var dumpMode = false;
 var infoMode = false;
 var infoPoint = 0;
-var shovelButton, dumpButton, rainButton, houseButton, treeButton, infoButton;
+var shovelButton, dumpButton, rainButton, houseButton, treeButton, infoButton, menuButton, resetButton;
 var rainFlag = false;
 var changeFlag = false;
 var activeLS = false, newLS = false, slideStopFlag = false;
 var slideStopTime = 0;
-var active_ls_balls = [];
+var active_ls_balls;
 var adding_shovel, digging_shovel, landslide_shovel, active_shovel;
 
 var esckey;
 var slide_body;
 var lkey, hkey, rkey, qkey, onekey, twokey;
 
+
+
 var playState2 = function (game) {
-
-
+    
 };
 
 
@@ -71,9 +72,9 @@ playState2.prototype = {
         slide_body = g.add.graphics(0, 0);
         timeDisplay = g.add.text(worldW/2, 5, [], { fill: '#001122', font: '14pt Arial' });
         timeDisplay.visible = false;
-        slopetext = g.add.text(worldW/5, 5, "Slope gradient:",  { font: '14pt Arial', fill: '#001155' });
-        saturationtext = g.add.text(worldW/5, 25, "Saturation:",  { font: '14pt Arial', fill: '#001155' });
-        FStext = g.add.text(worldW/5, 45, "Factor of Safety:",  { font: '14pt Arial', fill: '#001155' });
+        slopetext = g.add.text(worldW/5-30, 13, "Slope gradient:",  { font: '14pt Arial', fill: '#001155' });
+        saturationtext = g.add.text(worldW/5-30, 33, "Saturation:",  { font: '14pt Arial', fill: '#001155' });
+        FStext = g.add.text(worldW/5-30, 53, "Factor of Safety:",  { font: '14pt Arial', fill: '#001155' });
         this.infoToggle(infoMode);
         
         
@@ -90,7 +91,8 @@ playState2.prototype = {
         onekey = g.input.keyboard.addKey(Phaser.Keyboard.ONE);
         twokey = g.input.keyboard.addKey(Phaser.Keyboard.TWO);
 
-
+        Hr = 3.5;//Number(HrField.value);
+        VE = 1.5;
         
         
         shovelButton = g.add.button(worldW-95, 80, 'shovel', this.toggleShovelMode, this,1,3,2,3);
@@ -100,21 +102,27 @@ playState2.prototype = {
         dumpButton = g.add.button(worldW-95, 5, 'dumptruck', this.toggleDumpMode, this, 1,3,2,3);
         dumpButton.scale.setTo(0.3, 0.3);
         dumpButton.alpha = 0.8;
+              
         
-        houseButton = g.add.button(worldW-170, 20, 'housebtn', this.houseButtonClick, this,1,2,1,1);
-        houseButton.scale.setTo(0.8, 0.8);        
+        //treeButton = g.add.button(worldW-170, 80, 'trees1', this.treesOn, this, 2, 1, 0);
+        //treeButton.scale.setTo(0.5, 0.5);
         
-        treeButton = g.add.button(worldW-170, 80, 'trees1', this.treesOn, this, 2, 1, 0);
-        treeButton.scale.setTo(0.5, 0.5);
-        
-        infoButton = g.add.button(worldW-90, 160, 'info', this.inspectPoints, this, 2, 1, 0);
-        infoButton.scale.setTo(0.02, 0.02);
+        infoButton = g.add.button(worldW-95, 150, 'info', this.inspectPoints, this, 2, 1, 0);
+        infoButton.scale.setTo(0.025, 0.025);
         
         rainButton = g.add.button(10, 10, 'rain_button', null, null, 1, 3, 2, 3);
         rainButton.scale.setTo(0.6, 0.6);
         rainButton.onInputDown.add(this.toggleRain, this)
         rainButton.onInputUp.add(this.toggleRain, this)
-                
+        
+        menuButton = g.add.button(worldW-95, 250, 'menu_button', function(){g.state.start('menu')}, this,1,3,2,3);
+        menuButton.scale.setTo(0.6, 0.6); 
+        
+        resetButton = g.add.button(worldW-95, 280, 'reset_button', function(){g.state.start('play2')}, this,1,3,2,3);
+        resetButton.scale.setTo(0.6, 0.6); 
+        
+        dots = new Array(0);
+        active_ls_balls = new Array(0);
         dotGroup = g.add.group();
 
         adding_shovel = new this.Shovel(3,-2); // (w,d)
@@ -155,14 +163,12 @@ playState2.prototype = {
         lkey.onDown.add(this.doLandslide, this);
         hkey.onDown.add(function() {this.newHouse(worldW/2,10)}, this);
         rkey.onDown.add(this.toggleRain, this);
-        onekey.onDown.addOnce(function(){  g.state.start('play')});
-        twokey.onDown.addOnce(function(){  g.state.start('play2')});
+        onekey.onDown.addOnce(function() {g.state.start('play')} );
 
-        
         /* CREATE: SURFACE ARRAYS */
         
         // prepare the bedrock surface array
-        bedrock_surface = this.sinFunc(x_axis,surf_amp,surf_wavelength,surf_shift);
+        bedrock_surface = this.arrayScale(x_axis,-surf_slope,0);
         this.rebaseFunc(bedrock_surface);
         // convert to canvas coordinates
         bedrock_surface_canvas = this.arrayScale(bedrock_surface,dy_canvas,worldH);
@@ -182,7 +188,7 @@ playState2.prototype = {
         
         /* Scenario-specific placement */
         
-        
+
        /*  End scenario modifications */
         
 
@@ -242,11 +248,10 @@ playState2.prototype = {
         } // shovelmode
         
         if (infoMode) {
-            if (!shovelMode & !dumpMode & !this.overButton() && g.input.mousePointer.isDown) {
+            if (!shovelMode && !dumpMode && !this.overButton() && g.input.mousePointer.isDown) {
                 var pickX = g.input.mousePointer.x;
                 var pickY = g.input.mousePointer.y;
-                infoPoint = this.findNearestPoint(pickX, pickY)
-
+                infoPoint = this.findNearestPoint(pickX, pickY);
             }
                 this.infoShower(infoPoint);
         }
@@ -269,7 +274,7 @@ playState2.prototype = {
                     soil_surface = this.restoreSurface(x_axis,soil_surface,active_ls_balls);
                     this.doSurfaceChangedUpdates();
 
-                    //changeFlag = true;
+                    changeFlag = true;
                 }
                 
             } else if (n_stopped != active_ls_balls.length && slideStopFlag == true) { 
@@ -591,8 +596,9 @@ playState2.prototype = {
         this.updateLandscapeGraphics();
         this.pointsInArea(ptDensity,x_axis,soil_surface,soil_surface_old);
         soil_surface_old = this.arrayScale(soil_surface,1,0);  // resets this to the new soil_surface
-        this.checkBalls( active_ls_balls,x_axis_canvas, this.arrayMin(soil_surface_canvas,bedrock_surface_canvas) );
+        this.checkBalls( active_ls_balls,x_axis_canvas,            this.arrayMin(soil_surface_canvas,bedrock_surface_canvas) );
         dots = this.updateAnalysisPoints(dots);
+        changeFlag = false;
     },
  
     doLandslide: function () {
@@ -692,7 +698,7 @@ playState2.prototype = {
                     var ball = g.add.sprite(bx,by,'clods');
                     ball.frame = clodFrame;
                     //var ball = g.add.sprite(bx,by,)
-                    ball.width = 3*ballsize; ball.height = 3*ballsize;
+                    ball.width = 2.5*ballsize; ball.height = 2.5*ballsize;
                     ball.tint = soilclr;
                     ball.anchor.x = 0.5; ball.anchor.y = 0.5;
 
@@ -727,7 +733,7 @@ playState2.prototype = {
             // count stationary
             if (bb.body.velocity.x < 0.1 && bb.body.velocity.y < 0.1) {n_stopped++};
             
-            if ( bb.x >= worldW || bb.y > this.interp1(x_array,surf_array,bb.x) ) {
+            if ( bb.x >= worldW || bb.y+2 > this.interp1(x_array,surf_array,bb.x) ) {
                 bb.destroy();
                 ball_array.splice(b,1);
             }
@@ -792,7 +798,6 @@ playState2.prototype = {
         soil_graphic.body.setChain(bodypoly);
         soil_graphic.body.static = true;
 
-        changeFlag = false;
     },
     
     restoreSurface: function(x_axis,surf,balls) {
@@ -829,7 +834,7 @@ playState2.prototype = {
             } // for j
 
             if (npt > 0) {
-                hx[i] = -(worldH-dpMax)/dy_canvas-yarr[i];   // convert to physical units for return
+                hx[i] = -(worldH-dpMax)/dy_canvas-yarr[i]-.4;   // convert to physical units for return
             }
         }     // for i
     
@@ -1128,8 +1133,10 @@ playState2.prototype = {
 
           } // for i = points
         if (infoMode) {
+          if (points[infoPoint]) {
               points[infoPoint].scale = 6;
-              points[infoPoint].color = 0xFFFF00;          
+              points[infoPoint].color = 0xFFFF00;         
+          }
         }
             
           points = points.filter(function(pt) {return pt.alive});
@@ -1169,7 +1176,7 @@ playState2.prototype = {
         
     failurePlane: function (xarr,points,wdw) {
         /* This function, given the subset of ground test points that are failing, determines 
-        whether enough nearby points are failing to interpolate a landslide surface across them. It returns an array of size(x_axis) with the depth of the failure plane in the appropriate elements, or zero wherethere is no failure.
+        whether enough nearby points are failing to interpolate a landslide surface across them. It returns an array of size(x_axis) with the depth of the failure plane in the appropriate elements, or zero where there is no failure.
 
         inputs: points: array of analysis point objects; x_axis: x-coordinates of ground surface points wdw: window around each column to count points
         returns: hx: array of size(x_axis) with depth of failure surface at each surface x-coordinate */        
@@ -1206,7 +1213,7 @@ playState2.prototype = {
     
     failurePlaneMean: function (xarr,points,wdw) {
         /* This function, given the subset of ground test points that are failing, determines 
-        whether enough nearby points are failing to interpolate a landslide surface across them. It returns an array of size(x_axis) with the depth of the failure plane in the appropriate elements, or zero wherethere is no failure.
+        whether enough nearby points are failing to interpolate a landslide surface across them. It returns an array of size(x_axis) with the depth of the failure plane in the appropriate elements, or zero where there is no failure.
 
         inputs: points: array of analysis point objects; x_axis: x-coordinates of ground surface points wdw: window around each column to count points
         returns: hx: array of size(x_axis) with depth of failure surface at each surface x-coordinate */        
@@ -1256,7 +1263,10 @@ playState2.prototype = {
         } else {point.satDepth=0} 
 
         point.saturation -= 0.5 * (queryInterval/timeRate)*point.saturation;
-                
+        
+        if (point.saturation > 1) {point.saturation = 1};
+        if (point.saturation < 0) {point.saturation = 0}; // should not happen
+        
     },
 
     colorAnalysisPoint: function(FS) {
@@ -1281,8 +1291,8 @@ playState2.prototype = {
     
     findNearestPoint: function (xpoint, ypoint) {
       var dist;
-      var close = 1000;
-      var r;
+      var close = 20;
+      var r = infoPoint;
       for(var t = 0; t < dots.length-1; t++){
         dist = Phaser.Math.distance(xpoint, ypoint, dots[t].x * dx_canvas, worldH+dots[t].y * dy_canvas);
         if(close > dist){
@@ -1295,9 +1305,14 @@ playState2.prototype = {
     },
     
     infoShower: function (r) {
-         slopetext.setText("Slope gradient: "+Math.round(dots[r].theta*100)/100);
-         saturationtext.setText("Saturation: "+Math.round(dots[r].saturation * 100)+"%" );
-         FStext.setText("Factor of Safety: "+Math.round(dots[r].FS*10)/10);
+        if (dots[r]) {
+            var slp_tan = Math.round( Math.tan(dots[r].theta)*100)/100;
+            var slp_recip = Math.round( 10/slp_tan ) / 10;
+            var slp_deg = Math.round( this.rad2Deg(dots[r].theta) );
+            slopetext.setText("Slope gradient: "+slp_deg+"º ("+slp_recip+":1)");
+            saturationtext.setText("Saturation: "+Math.round(dots[r].saturation * 100)+"%" );
+            FStext.setText("Factor of Safety: "+Math.round(dots[r].FS*10)/10);
+        }
     },
 
     infoToggle: function (show_info) {
