@@ -27,7 +27,6 @@ Implement:
 15. Blast tool that cuts a bench onto bedrock
 16. Testing on multiple browsers / older browsers to develop a compatibility profile
 17. Performance optimization
-18. Scenario design
 19. Other advanced tools: pilings to bedrock, pier walls, drainage features
 
 Fix:
@@ -46,13 +45,19 @@ Sprite work:
 
 1. Improve general appearance of things.
 2. Cursor appearance overlays for tools.
+3. Info icon active/over states.
+
+Scenario work:
+
+1. Adjustable global thickness and angle for simple slope scenario
+2. Cost of building game?
 
 Code style work:
 
 1. Deglobalize as much as possible
 2. Parameters to interface
 3. Make sure scoping is correct overall for modularity
-4. Implement modularity using prototype function and JSON in the playState definition
+4. Implement modularity 
 5. Incompatible with all vesions of IE due to lack of ES6 support. Array.fill() is one culprit; refactor if changes are few and don't impact performance, otherwise use Babel transpiler.
 
 DONE:

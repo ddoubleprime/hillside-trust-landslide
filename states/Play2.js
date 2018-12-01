@@ -218,6 +218,7 @@ playState2.prototype = {
             rainTime = nowTime - rainStartTime;
         }
         
+
         
         /* Routine here for scooping / dumping 
             Uses something like a gaussian shape subtracted across the range of x-indices selected. These defined by a shovel_width parameter in world grid units.
@@ -248,13 +249,19 @@ playState2.prototype = {
         } // shovelmode
         
         if (infoMode) {
-            if (!shovelMode && !dumpMode && !this.overButton() && g.input.mousePointer.isDown) {
-                var pickX = g.input.mousePointer.x;
-                var pickY = g.input.mousePointer.y;
-                infoPoint = this.findNearestPoint(pickX, pickY);
+
+            if (!shovelMode && !dumpMode && !this.overButton()) {
+                
+                g.canvas.style.cursor = "help";
+                
+                if (g.input.mousePointer.isDown) {
+                    var pickX = g.input.mousePointer.x;
+                    var pickY = g.input.mousePointer.y;
+                    infoPoint = this.findNearestPoint(pickX, pickY);
+                }
             }
                 this.infoShower(infoPoint);
-        }
+        }    
         
         
         if (activeLS) {
