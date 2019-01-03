@@ -242,7 +242,7 @@ function setup() {
 //     liner.x = 100;
 
 	decorations = g.group(trees1,trees2,shrub1,house);
-  decorations.remove(trees1,trees2);
+    decorations.remove(trees1,trees2);
 	rainButton = g.button([
 	  "ls-assets/button_rain_up.png",
 	  "ls-assets/button_rain_ov.png",

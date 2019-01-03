@@ -1,0 +1,49 @@
+{
+"scenario": {
+    "name": "standard_landscape",
+    "tools": {
+        "tool_placement": "TR",
+        "addTrees": true,
+        "inspect": true,
+        "shovel": true,
+        "dumpTruck": true,
+        "addHouse": true
+    },
+    
+    "landscape": {
+        "dx": 1,
+        "generator": "sin"
+    },
+    
+    "display": {
+        "VE": 1.8
+    },
+    
+    "sinGenerator": {
+        "amplitude": 15,
+        "wavelength": 25,
+        "shift": 127
+    },
+    
+    "linearGenerator": {
+        "slope": 0.4
+    },
+    
+    "physical": {
+        "soil_density": 1500,
+        "default_cohesion": 5000,
+        "default_saturation": 0.25,
+        "default_phi": 24,
+        "default_soil_thickness": 2.5
+    },
+    
+    
+    
+    
+    
+    
+    
+    
+}
+
+}
