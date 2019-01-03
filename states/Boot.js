@@ -1,6 +1,4 @@
 
-
-
 var bootState = {
   create: function(){
     //g.time.desiredFPS = 30;
