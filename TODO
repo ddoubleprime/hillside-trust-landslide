@@ -6,7 +6,7 @@ Code style work:
 2. Parameters to interface
 3. Make sure scoping is correct overall for modularity
 4. Implement modularity 
-5. Incompatible with all vesions of IE due to lack of ES6 support. Array.fill() is one culprit; refactor if changes are few and don't impact performance, otherwise use Babel transpiler.
+5. Incompatible with all versions of IE due to lack of ES6 support. Array.fill() is one culprit; refactor if changes are few and don't impact performance, otherwise use Babel transpiler.
 
 
 Implement:
@@ -59,7 +59,7 @@ Sprite work:
 Scenario work:
 
 1. Adjustable global thickness and angle for simple slope scenario
-2. Cost of building game?
+2. "Cost of building" game?
 
 
 DONE:
@@ -116,8 +116,4 @@ DONE:
 DEPRECATED NOTES
 
 
-        - is it worth having 2 behaviors? How about redotting where thickened (below existing points)? 
-            - needs a planefinder based on current depth, can this be used for the FS planefinder? Planefinder based on an arbitrary property of the dots.
-                - can generalize to finding new surface of balls? common algo is finding for a characteristic among a local group of analysis points with locations defined by (x,y).
-                
-        - take a horizontally-averaged soil moisture z-profile through the changed sector and use it to repopulate redotted sectors
+**EOF**

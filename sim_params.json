@@ -1,6 +1,11 @@
 {
 "scenario": {
     "name": "standard_landscape",
+    
+    "display": {
+        "VE": 1.8
+    },
+    
     "tools": {
         "tool_placement": "TR",
         "addTrees": true,
@@ -12,37 +17,53 @@
     
     "landscape": {
         "dx": 1,
-        "generator": "sin"
+        "generator": "sin",
+        "modifiers": ["flat1","creek1"]
     },
     
-    "display": {
-        "VE": 1.8
+    "generators": {
+        "sin": {
+            "amplitude": 15,
+            "wavelength": 25,
+            "shift": 127
+        },
+        
+        "linear": {
+            "slope": 0.4
+        }
     },
     
-    "sinGenerator": {
-        "amplitude": 15,
-        "wavelength": 25,
-        "shift": 127
+    "modifiers": {
+        "flat1": {
+            "start_pos": 2,
+            "end_pos": 22,
+            "level_reference": 2,            
+            "level_offset": 0
+        },
+        
+        "creek1": {
+            "start_pos": 85,
+            "end_pos": 89,
+            "level_reference": 89,
+            "level_offset": -0.71
+        }        
+    },
+
+    "elements": {
+        "houses": [12], 
+        "trees": [20,21,23,25,30],
+        "streams": [87]
     },
     
-    "linearGenerator": {
-        "slope": 0.4
-    },
-    
-    "physical": {
-        "soil_density": 1500,
-        "default_cohesion": 5000,
+    "soil": {
+        "density": 1500,
+        "default_cohesion": 51000,
         "default_saturation": 0.25,
         "default_phi": 24,
         "default_soil_thickness": 2.5
-    },
+    }
     
-    
-    
-    
-    
-    
-    
+
     
 }
 

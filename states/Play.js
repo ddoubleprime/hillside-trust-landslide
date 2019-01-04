@@ -24,8 +24,8 @@ var showdotmode = true;
 var house, tree;
 
 var ksat = 0.1;        // infiltration rate / conductivity term, scales the rate of progress of the wetting front
-var defaultCohesion = 5000, defaultSaturation = 0.25, defaultPhi = 24, slopeWindowFactor = 2;
-
+//var defaultCohesion = 5000, defaultSaturation = 0.25, defaultPhi = 24, slopeWindowFactor = 2;
+var defaultCohesion, defaultSaturation, defaultPhi, slopeWindowFactor = 2;
 var ti, tiEvent, timeRate = 10000;  // ms per real-world time unit
 var timeKeeper, nowTime, worldTime = 0;
 var timeDisplay, rainDisplay, rainTime, rainStartTime;
@@ -51,7 +51,15 @@ var esckey;
 var slide_body;
 var lkey, hkey, rkey, qkey, onekey, twokey;
 
+var scenarioConfig = 'sim_params.json';     // path to config file - this will be passed from the menu
 
+function populateVariables(sceneParams) {
+    console.log(sceneParams)
+    defaultCohesion = sceneParams.scenario.soil.default_cohesion;
+    defaultSaturation = sceneParams.scenario.soil.default_saturation;
+    defaultPhi = sceneParams.scenario.soil.default_phi;
+            console.log(defaultCohesion, defaultSaturation, defaultPhi)
+}
 
 var playState = function (game) {
     
@@ -61,10 +69,19 @@ var playState = function (game) {
 playState.prototype = {
 
     create: function () {
+        
+        this.loadParams( 
+            function(response) {
+              // Parse JSON string into object
+                sceneParams = JSON.parse(response);
+                populateVariables(sceneParams);
+         });
+        
+        console.log(defaultCohesion, defaultSaturation, defaultPhi)
+        
         ti = g.time.create();
         tiEvent = g.time.create();
         background = g.add.image(0, 0, 'sky_dust');
-        //bedrock = g.add.sprite(0, 230, 'bedrock');
         rain_emitter = g.add.emitter(g.world.centerX, 0, 400);
         this.rainemitter(rain_emitter);
         soil_graphic = g.add.graphics(0, 0);
@@ -1365,6 +1382,20 @@ playState.prototype = {
   */
     },
     
+// load scenario file as JSON
+    loadParams: function(callback) {   
+
+    var xobj = new XMLHttpRequest();
+        xobj.overrideMimeType("application/json");
+        xobj.open('GET', scenarioConfig, true); // Replace 'my_data' with the path to your file
+        xobj.onreadystatechange = function () {
+              if (xobj.readyState == 4 && xobj.status == "200") {
+                // Required use of an anonymous callback as .open will NOT return a value but simply returns undefined in asynchronous mode
+                callback(xobj.responseText);
+              }
+        }
+        xobj.send(null);  
+    },
 
     
 };
