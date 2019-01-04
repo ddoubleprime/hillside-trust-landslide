@@ -51,8 +51,6 @@ var esckey;
 var slide_body;
 var lkey, hkey, rkey, qkey, onekey, twokey;
 
-var scenarioConfig = 'sim_params.json';     // path to config file - this will be passed from the menu
-
 
 
 var playState = function (game) {
@@ -64,7 +62,7 @@ playState.prototype = {
 
     create: function () {
         
-        var sceneParams = this.loadParams( );
+        var sceneParams = g.cache.getJSON('sceneParams');
         this.populateVariables(sceneParams);
         
         console.log(defaultCohesion, defaultSaturation, defaultPhi)

@@ -34,6 +34,7 @@ preload: function(){
   g.load.script('filterX', 'js/phaser-ce-2.10.0/filters/BlurX.js');
   g.load.script('filterY', 'js/phaser-ce-2.10.0/filters/BlurY.js');
   g.load.script('threshold', 'js/phaser-ce-2.10.0/filters/Threshold.js');
+  g.load.json('sceneParams','sim_params.json')
 },
 create: function() {
   g.add.text(g.world.width/2-20, g.world.height/2, "Loading...", {fill: "#CCCCff"});

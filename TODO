@@ -7,7 +7,7 @@ Code style work:
 3. Make sure scoping is correct overall for modularity
 4. Implement modularity 
 5. Incompatible with all versions of IE due to lack of ES6 support. Array.fill() is one culprit; refactor if changes are few and don't impact performance, otherwise use Babel transpiler.
-6. SYNCHRONOUS LOAD of JSON config file is not a performance hit here because of tiny config files; however, it is deprecated and will lose browser support within a few years. ASYNCHRONOUS loading is not deprecated but makes assigning out to game variables a major hassle. Another solution will be needed.
+
 
 
 Implement:
@@ -65,6 +65,7 @@ Scenario work:
 
 DONE:
 
+√ XMLHttpRequest SYNCHRONOUS LOAD of JSON config file is not a performance hit here because of tiny config files; however, it is deprecated and will lose browser support within a few years. ASYNCHRONOUS loading is not deprecated but makes assigning out to game variables a major hassle. Another solution will be needed - Should be able to load this through PHASER g.load.json.
 √ Parameters to interface
 √ House and other "real object" sprites should scale with the physical coordinate system 
 √ Balls not being killed when they accidentally cross into subsurface 
