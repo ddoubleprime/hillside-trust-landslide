@@ -57,7 +57,7 @@
     
     "soil": {
         "density": 1500,
-        "default_cohesion": 51000,
+        "default_cohesion": 5000,
         "default_saturation": 0.25,
         "default_phi": 24,
         "default_soil_thickness": 2.5

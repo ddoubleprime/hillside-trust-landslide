@@ -53,13 +53,7 @@ var lkey, hkey, rkey, qkey, onekey, twokey;
 
 var scenarioConfig = 'sim_params.json';     // path to config file - this will be passed from the menu
 
-function populateVariables(sceneParams) {
-    console.log(sceneParams)
-    defaultCohesion = sceneParams.scenario.soil.default_cohesion;
-    defaultSaturation = sceneParams.scenario.soil.default_saturation;
-    defaultPhi = sceneParams.scenario.soil.default_phi;
-            console.log(defaultCohesion, defaultSaturation, defaultPhi)
-}
+
 
 var playState = function (game) {
     
@@ -70,12 +64,8 @@ playState.prototype = {
 
     create: function () {
         
-        this.loadParams( 
-            function(response) {
-              // Parse JSON string into object
-                sceneParams = JSON.parse(response);
-                populateVariables(sceneParams);
-         });
+        var sceneParams = this.loadParams( );
+        this.populateVariables(sceneParams);
         
         console.log(defaultCohesion, defaultSaturation, defaultPhi)
         
@@ -1383,19 +1373,26 @@ playState.prototype = {
     },
     
 // load scenario file as JSON
-    loadParams: function(callback) {   
+    loadParams: function() {   
+        // SYNCHRONOUS LOAD is not a performance hit here because of tiny config files; however, it is deprecated and will lose browser support within a few years. Another solution will be needed.
+        // ASYNCHRONOUS loading is not deprected but makes assigning out to game variables a major hassle
+        var xobj = new XMLHttpRequest();
+            xobj.overrideMimeType("application/json");
+            xobj.open('GET', scenarioConfig, false); // Replace 'my_data' with the path to your file
+    //        xobj.onreadystatechange = function () {
+    //              if (xobj.readyState == 4 && xobj.status == "200") {
+    //                // Required use of an anonymous callback as .open will NOT return a value but simply returns undefined in asynchronous mode
+    //                callback(xobj.responseText);
+    //              }
+    //        }
+            xobj.send(null);  
+            return JSON.parse(xobj.responseText);
+        },
 
-    var xobj = new XMLHttpRequest();
-        xobj.overrideMimeType("application/json");
-        xobj.open('GET', scenarioConfig, true); // Replace 'my_data' with the path to your file
-        xobj.onreadystatechange = function () {
-              if (xobj.readyState == 4 && xobj.status == "200") {
-                // Required use of an anonymous callback as .open will NOT return a value but simply returns undefined in asynchronous mode
-                callback(xobj.responseText);
-              }
-        }
-        xobj.send(null);  
-    },
-
-    
+    populateVariables: function (sceneParams) {
+        console.log(sceneParams)
+        defaultCohesion = sceneParams.scenario.soil.default_cohesion;
+        defaultSaturation = sceneParams.scenario.soil.default_saturation;
+        defaultPhi = sceneParams.scenario.soil.default_phi;
+    }
 };
