@@ -8,11 +8,11 @@
     
     "tools": {
         "tool_placement": "TR",
-        "addTrees": true,
+        "add_trees": true,
         "inspect": true,
         "shovel": true,
-        "dumpTruck": true,
-        "addHouse": true
+        "dump_truck": true,
+        "add_house": true
     },
     
     "landscape": {
@@ -60,7 +60,7 @@
         "default_cohesion": 5000,
         "default_saturation": 0.25,
         "default_phi": 24,
-        "default_soil_thickness": 2.5
+        "default_thickness": 2.5
     }
     
 

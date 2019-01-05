@@ -4,13 +4,12 @@ var x_axis;
 var soil_graphic,bedrock_graphic;
 var bot_pts, top_pts;
 var soilclr = 0x998355, rockclr = 0x333333;
-var dx = 1, VE;     // x-spacing in grid units, vertical exaggeration
+var dx, VE;     // x-spacing in grid units, vertical exaggeration
 var worldW = 603, worldH = 504;
 var y_base, soil_surface, bedrock_surface;
 var surf_amp=15,surf_wavelength=25,surf_shift=127;
 var dx_canvas, dy_canvas, x_axis_canvas, soil_surface_canvas, bedrock_surface_canvas, y_base_canvas;
 var soil_thickness, soil_surface_old;
-//var HrField = document.getElementById("Hreg");	// pull reg height from HTML slider
 var Hr;
 
 var rho_r = 1500;
@@ -24,7 +23,6 @@ var showdotmode = true;
 var house, tree;
 
 var ksat = 0.1;        // infiltration rate / conductivity term, scales the rate of progress of the wetting front
-//var defaultCohesion = 5000, defaultSaturation = 0.25, defaultPhi = 24, slopeWindowFactor = 2;
 var defaultCohesion, defaultSaturation, defaultPhi, slopeWindowFactor = 2;
 var ti, tiEvent, timeRate = 10000;  // ms per real-world time unit
 var timeKeeper, nowTime, worldTime = 0;
@@ -96,36 +94,13 @@ playState.prototype = {
         onekey = g.input.keyboard.addKey(Phaser.Keyboard.ONE);
         twokey = g.input.keyboard.addKey(Phaser.Keyboard.TWO);
 
-        Hr = 2.5;//Number(HrField.value);
-        VE = 1.8;
-        
-        shovelButton = g.add.button(worldW-95, 80, 'shovel', this.toggleShovelMode, this,1,3,2,3);
-        shovelButton.scale.setTo(0.25, 0.25);
-        shovelButton.alpha = 0.8;
-        
-        dumpButton = g.add.button(worldW-95, 5, 'dumptruck', this.toggleDumpMode, this, 1,3,2,3);
-        dumpButton.scale.setTo(0.3, 0.3);
-        dumpButton.alpha = 0.8;
-        
-        houseButton = g.add.button(worldW-170, 20, 'housebtn', this.houseButtonClick, this,1,2,1,1);
-        houseButton.scale.setTo(0.8, 0.8);        
-        
-        //treeButton = g.add.button(worldW-170, 80, 'trees1', this.treesOn, this, 2, 1, 0);
-        //treeButton.scale.setTo(0.5, 0.5);
-        
-        infoButton = g.add.button(worldW-165, 88, 'info', this.inspectPoints, this, 2, 1, 0);
-        infoButton.scale.setTo(0.02, 0.02);
+        this.makeToolButtons(sceneParams.scenario.tools)
         
         rainButton = g.add.button(10, 10, 'rain_button', null, null, 1, 3, 2, 3);
         rainButton.scale.setTo(0.6, 0.6);
         rainButton.onInputDown.add(this.toggleRain, this)
         rainButton.onInputUp.add(this.toggleRain, this)
         
-        menuButton = g.add.button(worldW-95, 180, 'menu_button', function(){g.state.start('menu')}, this,1,3,2,3);
-        menuButton.scale.setTo(0.6, 0.6); 
-        
-        resetButton = g.add.button(worldW-95, 210, 'reset_button', function(){g.state.start('play')}, this,1,3,2,3);
-        resetButton.scale.setTo(0.6, 0.6); 
         
         dots = new Array(0);
         dotGroup = g.add.group();
@@ -1369,28 +1344,96 @@ playState.prototype = {
         g.debug.body(house, 'rgb('+red+',0,'+blue+')');
   */
     },
-    
-// load scenario file as JSON
-    loadParams: function() {   
-        // SYNCHRONOUS LOAD is not a performance hit here because of tiny config files; however, it is deprecated and will lose browser support within a few years. Another solution will be needed.
-        // ASYNCHRONOUS loading is not deprected but makes assigning out to game variables a major hassle
-        var xobj = new XMLHttpRequest();
-            xobj.overrideMimeType("application/json");
-            xobj.open('GET', scenarioConfig, false); // Replace 'my_data' with the path to your file
-    //        xobj.onreadystatechange = function () {
-    //              if (xobj.readyState == 4 && xobj.status == "200") {
-    //                // Required use of an anonymous callback as .open will NOT return a value but simply returns undefined in asynchronous mode
-    //                callback(xobj.responseText);
-    //              }
-    //        }
-            xobj.send(null);  
-            return JSON.parse(xobj.responseText);
-        },
 
     populateVariables: function (sceneParams) {
         console.log(sceneParams)
+        // display
+        VE = sceneParams.scenario.display.VE;
+        // landscape
+        dx = sceneParams.scenario.landscape.dx;
+        // soil
+        Hr = sceneParams.scenario.soil.default_thickness;
         defaultCohesion = sceneParams.scenario.soil.default_cohesion;
         defaultSaturation = sceneParams.scenario.soil.default_saturation;
         defaultPhi = sceneParams.scenario.soil.default_phi;
+    },
+    
+    makeToolButtons: function(toolOptions) {
+            
+        // logic to set coordinate variables for each button based on toolOptions.tool_placement
+        // right now options are "TL" (top left) and "TR" (top right), which is the default
+        var shovelX, shovelY, dumpX, dumpY, houseX, houseY, inspectX, inspectY, treeX, treeY, menuX, menuY, resetX, resetY;
+        
+        // y-coords not dependent on side. these are in canvas units
+        shovelY = 80;
+        dumpY = 5;
+        houseY = 20;
+        inspectY = 88;
+        // treeY = 0;
+        
+        menuY = 180;
+        resetY = 210;
+
+        
+        if (toolOptions.tool_placement === "TL") {
+            
+            shovelX = 95;
+            dumpX = 95;
+            houseX = 170;
+            inspectX = 165;
+            // treeX = 0;
+            
+            menuX = 5;
+            resetX = 5;
+            
+        } else {
+            
+            shovelX = worldW-95;
+            dumpX = worldW-95;
+            houseX = worldW-170;
+            inspectX = worldW-165;
+            // treeX = 0;
+            
+            menuX = worldW-95;
+            resetX = worldW-95;
+
+        }
+        
+
+        // draw each button for which toolOptions.tool_placement == true
+        if (toolOptions.shovel) {
+            shovelButton = g.add.button(shovelX, shovelY, 'shovel', this.toggleShovelMode, this,1,3,2,3);
+            shovelButton.scale.setTo(0.25, 0.25);
+            shovelButton.alpha = 0.8;
+        }
+
+        if (toolOptions.dump_truck) {
+            dumpButton = g.add.button(dumpX, dumpY, 'dumptruck', this.toggleDumpMode, this, 1,3,2,3);
+            dumpButton.scale.setTo(0.3, 0.3);
+            dumpButton.alpha = 0.8;
+        }
+        
+        if (toolOptions.add_house) {
+            houseButton = g.add.button(houseX, houseY, 'housebtn', this.houseButtonClick, this,1,2,1,1);
+            houseButton.scale.setTo(0.8, 0.8);        
+        }
+        
+        if (toolOptions.add_trees) {
+            //treeButton = g.add.button(treeX, treeY, 'trees1', this.treesOn, this, 2, 1, 0);
+            //treeButton.scale.setTo(0.5, 0.5);
+        }
+        
+        if (toolOptions.inspect) {
+            infoButton = g.add.button(inspectX, inspectY, 'info', this.inspectPoints, this, 2, 1, 0);
+            infoButton.scale.setTo(0.02, 0.02);
+        }
+        
+        // persistent buttons
+        menuButton = g.add.button(menuX, menuY, 'menu_button', function(){g.state.start('menu')}, this,1,3,2,3);
+        menuButton.scale.setTo(0.6, 0.6); 
+        
+        resetButton = g.add.button(resetX, resetY, 'reset_button', function(){g.state.start('play')}, this,1,3,2,3);
+        resetButton.scale.setTo(0.6, 0.6); 
+        
     }
 };

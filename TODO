@@ -13,13 +13,12 @@ Code style work:
 Implement:
 
 1. Grading shovel that smooths an area
-2. Measurement tools
-    - slope, saturation, cohesion
+2. Standardize toolbar grid and place along edge not in scene
 3. Reset button
 4. Adjust saturation/drain rates to better match world time, and adjust world time rate
 5. Trees and other local point modifiers (proximity modifier object class, usable for drains, trees, roads, etc.)
     - proximity method returns all analysis points within a radius
-    - scale effect by distance 
+    - scale effect by distance
 6. River object. Where the bedrock is at a local minimum, uses a shovel to dig soil to zero there and attaches a kill zone for physics bodies that reach the "river".
 7. Display scale bars H and V
 8. Fade during surface restoration to remove sudden jump.
@@ -37,7 +36,8 @@ Implement:
 15. Blast tool that cuts a bench onto bedrock
 16. Testing on multiple browsers / older browsers to develop a compatibility profile
 17. Performance optimization
-19. Other advanced tools: pilings to bedrock, pier walls, drainage features
+18. Additional measurements in info tool
+19. Other advanced tools: pilings to bedrock, pier walls, drainage features, FS equation viewer
 
 Fix:
 
@@ -57,6 +57,7 @@ Sprite work:
 2. Cursor appearance overlays for tools.
 3. Info icon active/over states.
 
+
 Scenario work:
 
 1. Adjustable global thickness and angle for simple slope scenario
@@ -67,6 +68,8 @@ DONE:
 
 √ XMLHttpRequest SYNCHRONOUS LOAD of JSON config file is not a performance hit here because of tiny config files; however, it is deprecated and will lose browser support within a few years. ASYNCHRONOUS loading is not deprecated but makes assigning out to game variables a major hassle. Another solution will be needed - Should be able to load this through PHASER g.load.json.
 √ Parameters to interface
+√ Measurement tools
+    - slope, saturation, cohesion
 √ House and other "real object" sprites should scale with the physical coordinate system 
 √ Balls not being killed when they accidentally cross into subsurface 
 √ Set surface as only physics chain/bedrock separate chain is problematic
