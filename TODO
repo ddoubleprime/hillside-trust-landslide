@@ -50,6 +50,7 @@ Fix:
 7. Double check FS equation. 
 8. Shoveling with info shower active switches the active dot - related to dot IDs changing on redraw
 9. Breaks with dx != 1, an array length issue
+10. Dots plot on top of e.g. rain button
 
 Sprite work:
 

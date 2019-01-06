@@ -3,7 +3,7 @@
     "name": "standard_landscape",
     
     "display": {
-        "VE": 1.8
+        "VE": 2
     },
     
     "tools": {
@@ -29,7 +29,7 @@
         },
         
         "linear": {
-            "slope": 0.4
+            "slope": -0.4
         }
     },
     
@@ -60,7 +60,8 @@
         "default_cohesion": 5000,
         "default_saturation": 0.25,
         "default_phi": 24,
-        "default_thickness": 2.5
+        "default_thickness": 2.5,
+        "thin_factor": 0.96
     }
     
 

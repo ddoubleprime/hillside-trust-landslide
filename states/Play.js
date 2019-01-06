@@ -7,10 +7,10 @@ var soilclr = 0x998355, rockclr = 0x333333;
 var dx, VE;     // x-spacing in grid units, vertical exaggeration
 var worldW = 603, worldH = 504;
 var y_base, soil_surface, bedrock_surface;
-var surf_amp=15,surf_wavelength=25,surf_shift=127;
+//var surf_amp=15,surf_wavelength=25,surf_shift=127;
 var dx_canvas, dy_canvas, x_axis_canvas, soil_surface_canvas, bedrock_surface_canvas, y_base_canvas;
 var soil_thickness, soil_surface_old;
-var Hr;
+var Hr, soilThinFactor;
 
 var rho_r = 1500;
 var rho_w = 1000;
@@ -62,9 +62,7 @@ playState.prototype = {
         
         var sceneParams = g.cache.getJSON('sceneParams');
         this.populateVariables(sceneParams);
-        
-        console.log(defaultCohesion, defaultSaturation, defaultPhi)
-        
+                
         ti = g.time.create();
         tiEvent = g.time.create();
         background = g.add.image(0, 0, 'sky_dust');
@@ -95,13 +93,7 @@ playState.prototype = {
         twokey = g.input.keyboard.addKey(Phaser.Keyboard.TWO);
 
         this.makeToolButtons(sceneParams.scenario.tools)
-        
-        rainButton = g.add.button(10, 10, 'rain_button', null, null, 1, 3, 2, 3);
-        rainButton.scale.setTo(0.6, 0.6);
-        rainButton.onInputDown.add(this.toggleRain, this)
-        rainButton.onInputUp.add(this.toggleRain, this)
-        
-        
+                
         dots = new Array(0);
         dotGroup = g.add.group();
         active_ls_balls = new Array(0);
@@ -149,13 +141,20 @@ playState.prototype = {
         /* CREATE: SURFACE ARRAYS */
         
         // prepare the bedrock surface array
-        bedrock_surface = this.sinFunc(x_axis,surf_amp,surf_wavelength,surf_shift);
+        // generator options are "sin" and "linear", defaults to "linear"
+        if (sceneParams.scenario.landscape.generator == "sin") {
+            bedrock_surface = this.sinFunc(x_axis,sceneParams.scenario.generators.sin.amplitude,sceneParams.scenario.generators.sin.wavelength,sceneParams.scenario.generators.sin.shift);
+        } else {
+            bedrock_surface = this.arrayScale(x_axis,sceneParams.scenario.generators.linear.slope,0);
+        }
+        // rebase so lowest point is at the bottom of the canvas
         this.rebaseFunc(bedrock_surface);
         // convert to canvas coordinates
         bedrock_surface_canvas = this.arrayScale(bedrock_surface,dy_canvas,worldH);
         
         // prepare the soil surface array
-        soil_surface = this.arrayScale(bedrock_surface,0.96,Hr);
+        // soilThinFactor scales the thickness so that soil can be e.g. thinner at the tops of hills
+        soil_surface = this.arrayScale(bedrock_surface,soilThinFactor,Hr);
         soil_surface_old = this.arrayScale(soil_surface,1,0);  // makes a copy of soil_surface
 
         // assign physics bodies and properties        
@@ -1353,6 +1352,7 @@ playState.prototype = {
         dx = sceneParams.scenario.landscape.dx;
         // soil
         Hr = sceneParams.scenario.soil.default_thickness;
+        soilThinFactor = sceneParams.scenario.soil.thin_factor;
         defaultCohesion = sceneParams.scenario.soil.default_cohesion;
         defaultSaturation = sceneParams.scenario.soil.default_saturation;
         defaultPhi = sceneParams.scenario.soil.default_phi;
@@ -1371,8 +1371,9 @@ playState.prototype = {
         inspectY = 88;
         // treeY = 0;
         
-        menuY = 180;
-        resetY = 210;
+        rainY = 10
+        menuY = 95;
+        resetY = 125;
 
         
         if (toolOptions.tool_placement === "TL") {
@@ -1383,19 +1384,21 @@ playState.prototype = {
             inspectX = 165;
             // treeX = 0;
             
-            menuX = 5;
-            resetX = 5;
+            rainX = 10
+            menuX = 10;
+            resetX = 10;
             
         } else {
             
-            shovelX = worldW-95;
-            dumpX = worldW-95;
-            houseX = worldW-170;
-            inspectX = worldW-165;
+            shovelX = worldW-180;
+            dumpX = worldW-180;
+            houseX = worldW-250;
+            inspectX = worldW-245;
             // treeX = 0;
             
-            menuX = worldW-95;
-            resetX = worldW-95;
+            rainX = worldW-90;
+            menuX = worldW-90;
+            resetX = worldW-90;
 
         }
         
@@ -1429,6 +1432,11 @@ playState.prototype = {
         }
         
         // persistent buttons
+        rainButton = g.add.button(rainX, rainY, 'rain_button', null, null, 1, 3, 2, 3);
+        rainButton.scale.setTo(0.6, 0.6);
+        rainButton.onInputDown.add(this.toggleRain, this)
+        rainButton.onInputUp.add(this.toggleRain, this)
+        
         menuButton = g.add.button(menuX, menuY, 'menu_button', function(){g.state.start('menu')}, this,1,3,2,3);
         menuButton.scale.setTo(0.6, 0.6); 
         
