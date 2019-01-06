@@ -1,43 +1,46 @@
 TODO:
 
+Priorities, Jan. 2019 update:
+    - Scenario configuration file
+    - Fix dx issue
+    - Trees
+
+
 Code style work:
 
 1. Deglobalize as much as possible
 2. Properly load parameters from interface
-3. Make sure scoping is correct overall for modularity
-4. Implement modularity 
-5. Incompatible with all versions of IE due to lack of ES6 support. Array.fill() is one culprit; refactor if changes are few and don't impact performance, otherwise use Babel transpiler.
-
+3. Incompatible with all versions of IE due to lack of ES6 support. Array.fill() is one culprit; refactor if changes are few and don't impact performance, otherwise use Babel transpiler.
+4. Performance optimization
 
 
 Implement:
 
 1. Grading shovel that smooths an area
 2. Standardize toolbar grid and place along edge not in scene
-3. Reset button
-4. Adjust saturation/drain rates to better match world time, and adjust world time rate
-5. Trees and other local point modifiers (proximity modifier object class, usable for drains, trees, roads, etc.)
+3. Adjust saturation/drain rates to better match world time, and adjust world time rate
+4. Trees and other local point modifiers (proximity modifier object class, usable for drains, trees, roads, etc.)
     - proximity method returns all analysis points within a radius
     - scale effect by distance
-6. River object. Where the bedrock is at a local minimum, uses a shovel to dig soil to zero there and attaches a kill zone for physics bodies that reach the "river".
-7. Display scale bars H and V
-8. Fade during surface restoration to remove sudden jump.
+5. River object. Where the bedrock is at a local minimum, uses a shovel to dig soil to zero there and attaches a kill zone for physics bodies that reach the "river".
+6. Display scale bars H and V
+7. Fade during surface restoration to remove sudden jump.
     - stroke over relevant portion of surface
-9. Mode mutual exclusivity / rain button switches out of all modes
-10. Disable dragging while in shovel or dump mode
-11. Dynamic window size scaling
-12. Change thickness slider to a +/- soil everywhere button that adds a fixed increment per click    
-13. Juice! 
+8. Mode mutual exclusivity / rain button switches out of all modes
+9. Disable dragging while in shovel or dump mode
+10. Dynamic window size scaling
+11. Juice! 
     - shovel scrape in soil, clink on bedrock
     - truck beep beep on select, then whump on dump
     - landslide rumble
     - rain sound and thunder when raining
-14. Get physics time? Can slow clock to match event time
-15. Blast tool that cuts a bench onto bedrock
-16. Testing on multiple browsers / older browsers to develop a compatibility profile
-17. Performance optimization
-18. Additional measurements in info tool
-19. Other advanced tools: pilings to bedrock, pier walls, drainage features, FS equation viewer
+12. Get physics time? Can slow clock to match event time
+13. Blast tool that cuts a bench onto bedrock
+14. +/- soil everywhere button that adds a fixed increment per click
+15. Slope increment tool
+16. Additional measurements in info tool
+17. Other advanced tools: pilings to bedrock, pier walls, drainage features, FS equation viewer
+
 
 Fix:
 
@@ -51,6 +54,7 @@ Fix:
 8. Shoveling with info shower active switches the active dot - related to dot IDs changing on redraw
 9. Breaks with dx != 1, an array length issue
 10. Dots plot on top of e.g. rain button
+
 
 Sprite work:
 
@@ -68,7 +72,11 @@ Scenario work:
 DONE:
 
 √ XMLHttpRequest SYNCHRONOUS LOAD of JSON config file is not a performance hit here because of tiny config files; however, it is deprecated and will lose browser support within a few years. ASYNCHRONOUS loading is not deprecated but makes assigning out to game variables a major hassle. Another solution will be needed - Should be able to load this through PHASER g.load.json.
+√ Make sure scoping is correct overall for modularity
+√ Implement modularity 
 √ Parameters to interface
+√ Testing on multiple browsers / older browsers to develop a compatibility profile
+√ Reset button
 √ Measurement tools
     - slope, saturation, cohesion
 √ House and other "real object" sprites should scale with the physical coordinate system 
