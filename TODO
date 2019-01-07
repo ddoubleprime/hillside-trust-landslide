@@ -9,7 +9,6 @@ Priorities, Jan. 2019 update:
 Code style work:
 
 1. Deglobalize as much as possible
-2. Properly load parameters from interface
 3. Incompatible with all versions of IE due to lack of ES6 support. Array.fill() is one culprit; refactor if changes are few and don't impact performance, otherwise use Babel transpiler.
 4. Performance optimization
 
@@ -18,7 +17,7 @@ Implement:
 
 1. Grading shovel that smooths an area
 2. Standardize toolbar grid and place along edge not in scene
-3. Adjust saturation/drain rates to better match world time, and adjust world time rate
+3. Menu generation from scenarios file
 4. Trees and other local point modifiers (proximity modifier object class, usable for drains, trees, roads, etc.)
     - proximity method returns all analysis points within a radius
     - scale effect by distance
@@ -40,6 +39,7 @@ Implement:
 15. Slope increment tool
 16. Additional measurements in info tool
 17. Other advanced tools: pilings to bedrock, pier walls, drainage features, FS equation viewer
+18. Increase active landslide limit
 
 
 Fix:
@@ -66,11 +66,19 @@ Sprite work:
 Scenario work:
 
 1. Adjustable global thickness and angle for simple slope scenario
-2. "Cost of building" game?
+
+
+Major updates:
+
+1. Mobile compatiblity - requires tool implementation changes
+2. Load and run real rainfall sequence
+    - Adjust saturation/drain rates to better match world time, and adjust world time rate
+3. "Cost of building" game?
 
 
 DONE:
 
+√ Properly load parameters from interface
 √ XMLHttpRequest SYNCHRONOUS LOAD of JSON config file is not a performance hit here because of tiny config files; however, it is deprecated and will lose browser support within a few years. ASYNCHRONOUS loading is not deprecated but makes assigning out to game variables a major hassle. Another solution will be needed - Should be able to load this through PHASER g.load.json.
 √ Make sure scoping is correct overall for modularity
 √ Implement modularity 

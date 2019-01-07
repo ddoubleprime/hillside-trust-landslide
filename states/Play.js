@@ -158,6 +158,7 @@ playState.prototype = {
 
         
         /* Apply scenario-specific modifiers */
+        
         for (var i = 0; i < sceneParams.scenario.landscape.modifiers.length; i++) {
             
             var currentModifier = sceneParams.scenario.landscape.modifiers[i];
@@ -165,36 +166,35 @@ playState.prototype = {
             modParams = sceneParams.scenario.modifiers[currentModifier];
             // right now these are input as array index coordinates, which should be changed to physical space coordinates in the future.
             // here we can unpack the input params, convert to indices, and pass them to the code below, which split out as a function will also serves as core of the grading tool.
-            
-            // sets the level of a range of cells to that of the "level_reference" cell, plus/minus an offset if desired
-            for (var im=modParams.start_pos;im<modParams.end_pos;im++) {
-                soil_surface[im] = soil_surface[modParams.level_reference]+modParams.level_offset;
-            }
+            soil_surface = this.makeFlatSpot(soil_surface,modParams.start_pos,modParams.end_pos,modParams.level_reference,modParams.level_offset);
             
         }
-        
-
-
-        // Distribute houses, trees, etc.
-        house = this.newHouse(0.12*worldW, 130);
-
        
+        // Enforce positive-definite soil thickness after modifications
+        soil_surface = this.arrayMax(soil_surface,bedrock_surface);
+        soil_surface_old = this.arrayScale(soil_surface,1,0);  // makes a copy of soil_surface
+        soil_surface_canvas = this.arrayScale(soil_surface,dy_canvas,worldH);
+        
+        // Distribute houses, trees, etc.
+        this.placeElements(sceneParams.scenario.elements);
+
         
         /*  End scenario modifications */
         
-        soil_surface_old = this.arrayScale(soil_surface,1,0);  // makes a copy of soil_surface
-
-        // assign physics bodies and properties        
-        g.physics.box2d.enable(soil_graphic); // not necessary - make surface a free body?
-
-        y_base_canvas = this.arrayScale(y_base,dy_canvas,worldH);
+        
+        /* Some final logistical things */
         
         // make canvas-unit coordinate pairs for drawing
+        
+        y_base_canvas = this.arrayScale(y_base,dy_canvas,worldH);
         bot_pts = this.two1dto2d(x_axis_canvas,y_base_canvas);
         
-
+        // assign physics bodies and properties        
+        g.physics.box2d.enable(soil_graphic); // not necessary - make surface a free body?
+        
         this.updateLandscapeGraphics();
         
+        // populate the analysis points
         this.pointsInArea(ptDensity,x_axis,soil_surface,bedrock_surface);        
         
         // make canvas-unit coordinate pairs for drawing and draw bedrock graphic
@@ -551,6 +551,14 @@ playState.prototype = {
         
     },
     
+    makeFlatSpot: function(arr,sp,ep,lr,lo) {
+        // sets the level of a range of cells of an array to that of the "level_reference" cell, plus/minus an offset if desired
+        for (var im=sp;im<ep;im++) {
+            arr[im] = soil_surface[lr]+lo;
+        }
+        return arr;
+    },
+    
     
 /* SUPPORT FUNCTIONS */
     
@@ -584,7 +592,7 @@ playState.prototype = {
         
         for (var i=0;i<xa.length;i++) {
             
-            hole[i] = shvl.depth/(sigma * Math.sqrt(2*Math.PI)) *       Math.exp(-0.5*Math.pow((xa[i]-mu)/sigma,2) ) ;
+            hole[i] = shvl.depth/(sigma * Math.sqrt(2*Math.PI)) * Math.exp(-0.5*Math.pow((xa[i]-mu)/sigma,2) ) ;
                          
             if (xa[i] >= mu-3*sigma && xa[i] <= mu+3*sigma) {
                 ynew[i] = (ysurf[i]-hole[i]);
@@ -788,10 +796,8 @@ playState.prototype = {
     updateLandscapeGraphics: function() {
         // derive thickness array
         soil_thickness = this.arrayAdd(soil_surface,bedrock_surface,-1);
-        
         soil_surface_canvas = this.arrayScale(soil_surface,dy_canvas,worldH);
         this.drawgraphic(soil_graphic,bot_pts,this.two1dto2d(x_axis_canvas,soil_surface_canvas),soilclr);
-        
         
         //g.world.bringToTop(soil_graphic);
         //g.world.bringToTop(active_ls_balls);
@@ -863,6 +869,7 @@ playState.prototype = {
         emitter.start(false, 1600, 5, 0);
         emitter.on = false;
     },
+    
     
 /* CALLBACKS and INPUT EVENTS */    
     
@@ -1454,6 +1461,27 @@ playState.prototype = {
         resetButton = g.add.button(resetX, resetY, 'reset_button', function(){g.state.start('play')}, this,1,3,2,3);
         resetButton.scale.setTo(0.6, 0.6); 
         
-    }
+    },
+    
+    placeElements: function(elementPlacements) {
+        for (var i = 0; i < elementPlacements.houses.length; i++) {
+            var hx = elementPlacements.houses[i]*dx_canvas;
+            var hy = this.interp1(x_axis_canvas,soil_surface_canvas,hx);
+
+            house = this.newHouse(hx, hy+2*dy_canvas); // houses start 2 m above ground
+        }
+        for (var i = 0; i < elementPlacements.trees.length; i++) {
+            var tx = elementPlacements.trees[i]*dx_canvas;
+            var ty = this.interp1(x_axis_canvas,soil_surface_canvas,tx);
+            
+            // tree = this.newTree(hx, hy+2*dy_canvas); // code to generate a tree
+        }
+        for (var i = 0; i < elementPlacements.streams.length; i++) {
+            var sx = elementPlacements.streams[i]*dx_canvas;
+            var sy = this.interp1(x_axis_canvas,soil_surface_canvas,hx);
+
+            // stream = this.newStream(sx, sy); // code to genmerate a stream
+        }
+}
     
 };
