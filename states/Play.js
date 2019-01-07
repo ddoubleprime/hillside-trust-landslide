@@ -155,6 +155,33 @@ playState.prototype = {
         // prepare the soil surface array
         // soilThinFactor scales the thickness so that soil can be e.g. thinner at the tops of hills
         soil_surface = this.arrayScale(bedrock_surface,soilThinFactor,Hr);
+
+        
+        /* Apply scenario-specific modifiers */
+        for (var i = 0; i < sceneParams.scenario.landscape.modifiers.length; i++) {
+            
+            var currentModifier = sceneParams.scenario.landscape.modifiers[i];
+            var modParams;
+            modParams = sceneParams.scenario.modifiers[currentModifier];
+            // right now these are input as array index coordinates, which should be changed to physical space coordinates in the future.
+            // here we can unpack the input params, convert to indices, and pass them to the code below, which split out as a function will also serves as core of the grading tool.
+            
+            // sets the level of a range of cells to that of the "level_reference" cell, plus/minus an offset if desired
+            for (var im=modParams.start_pos;im<modParams.end_pos;im++) {
+                soil_surface[im] = soil_surface[modParams.level_reference]+modParams.level_offset;
+            }
+            
+        }
+        
+
+
+        // Distribute houses, trees, etc.
+        house = this.newHouse(0.12*worldW, 130);
+
+       
+        
+        /*  End scenario modifications */
+        
         soil_surface_old = this.arrayScale(soil_surface,1,0);  // makes a copy of soil_surface
 
         // assign physics bodies and properties        
@@ -164,22 +191,6 @@ playState.prototype = {
         
         // make canvas-unit coordinate pairs for drawing
         bot_pts = this.two1dto2d(x_axis_canvas,y_base_canvas);
-        
-        
-        /* Scenario-specific placement */
-        
-        for (i=2;i<22;i++) {
-            // flat spot
-            soil_surface[i] = soil_surface[2];
-        }
-                
-        for (i=85;i<89;i++) {
-            // crick
-            soil_surface[i] = soil_surface[89]-0.71;
-        }
-        house = this.newHouse(0.12*worldW, 130);
-        
-       /*  End scenario modifications */
         
 
         this.updateLandscapeGraphics();
@@ -1444,4 +1455,5 @@ playState.prototype = {
         resetButton.scale.setTo(0.6, 0.6); 
         
     }
+    
 };
