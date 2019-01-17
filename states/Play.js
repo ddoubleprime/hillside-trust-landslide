@@ -49,7 +49,7 @@ var esckey;
 var slide_body;
 var lkey, hkey, rkey, qkey, onekey, twokey;
 
-
+//var scenario;
 
 var playState = function (game) {
     
@@ -61,6 +61,8 @@ playState.prototype = {
     create: function () {
         
         var sceneParams = g.cache.getJSON('sceneParams');
+        //scenario = "simple_slope";  // will be chosen by menu
+
         this.populateVariables(sceneParams);
                 
         ti = g.time.create();
@@ -92,7 +94,7 @@ playState.prototype = {
         onekey = g.input.keyboard.addKey(Phaser.Keyboard.ONE);
         twokey = g.input.keyboard.addKey(Phaser.Keyboard.TWO);
 
-        this.makeToolButtons(sceneParams.scenario.tools)
+        this.makeToolButtons(sceneParams[scenario].tools)
                 
         dots = new Array(0);
         dotGroup = g.add.group();
@@ -142,10 +144,10 @@ playState.prototype = {
         
         // prepare the bedrock surface array
         // generator options are "sin" and "linear", defaults to "linear"
-        if (sceneParams.scenario.landscape.generator == "sin") {
-            bedrock_surface = this.sinFunc(x_axis,sceneParams.scenario.generators.sin.amplitude,sceneParams.scenario.generators.sin.wavelength,sceneParams.scenario.generators.sin.shift);
+        if (sceneParams[scenario].landscape.generator == "sin") {
+            bedrock_surface = this.sinFunc(x_axis,sceneParams[scenario].generators.sin.amplitude,sceneParams[scenario].generators.sin.wavelength,sceneParams[scenario].generators.sin.shift);
         } else {
-            bedrock_surface = this.arrayScale(x_axis,sceneParams.scenario.generators.linear.slope,0);
+            bedrock_surface = this.arrayScale(x_axis,sceneParams[scenario].generators.linear.slope,0);
         }
         // rebase so lowest point is at the bottom of the canvas
         this.rebaseFunc(bedrock_surface);
@@ -159,11 +161,11 @@ playState.prototype = {
         
         /* Apply scenario-specific modifiers */
         
-        for (var i = 0; i < sceneParams.scenario.landscape.modifiers.length; i++) {
+        for (var i = 0; i < sceneParams[scenario].landscape.modifiers.length; i++) {
             
-            var currentModifier = sceneParams.scenario.landscape.modifiers[i];
+            var currentModifier = sceneParams[scenario].landscape.modifiers[i];
             var modParams;
-            modParams = sceneParams.scenario.modifiers[currentModifier];
+            modParams = sceneParams[scenario].modifiers[currentModifier];
             // right now these are input as array index coordinates, which should be changed to physical space coordinates in the future.
             // here we can unpack the input params, convert to indices, and pass them to the code below, which split out as a function will also serves as core of the grading tool.
             soil_surface = this.makeFlatSpot(soil_surface,modParams.start_pos,modParams.end_pos,modParams.level_reference,modParams.level_offset);
@@ -176,7 +178,7 @@ playState.prototype = {
         soil_surface_canvas = this.arrayScale(soil_surface,dy_canvas,worldH);
         
         // Distribute houses, trees, etc.
-        this.placeElements(sceneParams.scenario.elements);
+        this.placeElements(sceneParams[scenario].elements);
 
         
         /*  End scenario modifications */
@@ -1365,15 +1367,15 @@ playState.prototype = {
     populateVariables: function (sceneParams) {
         console.log(sceneParams)
         // display
-        VE = sceneParams.scenario.display.VE;
+        VE = sceneParams[scenario].display.VE;
         // landscape
-        dx = sceneParams.scenario.landscape.dx;
+        dx = sceneParams[scenario].landscape.dx;
         // soil
-        Hr = sceneParams.scenario.soil.default_thickness;
-        soilThinFactor = sceneParams.scenario.soil.thin_factor;
-        defaultCohesion = sceneParams.scenario.soil.default_cohesion;
-        defaultSaturation = sceneParams.scenario.soil.default_saturation;
-        defaultPhi = sceneParams.scenario.soil.default_phi;
+        Hr = sceneParams[scenario].soil.default_thickness;
+        soilThinFactor = sceneParams[scenario].soil.thin_factor;
+        defaultCohesion = sceneParams[scenario].soil.default_cohesion;
+        defaultSaturation = sceneParams[scenario].soil.default_saturation;
+        defaultPhi = sceneParams[scenario].soil.default_phi;
     },
     
     makeToolButtons: function(toolOptions) {

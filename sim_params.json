@@ -1,6 +1,8 @@
 {
-"scenario": {
-    "name": "standard_landscape",
+"active_scenarios": ["standard_landscape","simple_slope"],
+    
+"standard_landscape": {
+    "display_name": "Landscape",
     
     "display": {
         "VE": 1.8
@@ -53,6 +55,75 @@
         "houses": [12], 
         "trees": [20,21,23,25,30],
         "streams": [87]
+    },
+    
+    "soil": {
+        "density": 1500,
+        "default_cohesion": 5000,
+        "default_saturation": 0.25,
+        "default_phi": 24,
+        "default_thickness": 2.5,
+        "thin_factor": 0.96
+    }
+    
+
+    
+},
+
+"simple_slope": {
+    "display_name": "Simple Slope",
+    
+    "display": {
+        "VE": 1.8
+    },
+    
+    "tools": {
+        "tool_placement": "TR",
+        "add_trees": false,
+        "inspect": true,
+        "shovel": true,
+        "dump_truck": true,
+        "add_house": false
+    },
+    
+    "landscape": {
+        "dx": 1,
+        "generator": "linear",
+        "modifiers": []
+    },
+    
+    "generators": {
+        "sin": {
+            "amplitude": 15,
+            "wavelength": 25,
+            "shift": 127
+        },
+        
+        "linear": {
+            "slope": -0.4
+        }
+    },
+    
+    "modifiers": {
+        "flat1": {
+            "start_pos": 2,
+            "end_pos": 22,
+            "level_reference": 2, 
+            "level_offset": 0
+        },
+        
+        "creek1": {
+            "start_pos": 85,
+            "end_pos": 89,
+            "level_reference": 89,
+            "level_offset": -0.71
+        }        
+    },
+
+    "elements": {
+        "houses": [], 
+        "trees": [],
+        "streams": []
     },
     
     "soil": {
