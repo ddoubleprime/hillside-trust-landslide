@@ -16,7 +16,7 @@ var menuState = {
         for (i=0; i<sceneParams.active_scenarios.length; i++) {
             menuHandles[i] = g.add.text(100, 180, lineStr+sceneParams[sceneParams.active_scenarios[i]].display_name, {font:"24pt Helvetica", stroke:"#333333", strokeThickness:5, fill: "#449955"});
             menuHandles[i].inputEnabled=true;
-            menuHandles[i].input.enableDrag();
+            menuHandles[i].scenario = sceneParams.active_scenarios[i];
             menuHandles[i].events.onInputOver.add(this.over, this);
             menuHandles[i].events.onInputOut.add(this.out, this);
             menuHandles[i].events.onInputDown.add(this.down, this);
@@ -41,6 +41,7 @@ var menuState = {
 
         item.fill = "#ffff44";
         item.text = "clicked "  + " times";
+        console.log(item.scenario)
 
     },
 
