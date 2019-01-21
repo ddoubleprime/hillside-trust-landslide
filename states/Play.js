@@ -7,7 +7,6 @@ var soilclr = 0x998355, rockclr = 0x333333;
 var dx, VE;     // x-spacing in grid units, vertical exaggeration
 var worldW = 603, worldH = 504;
 var y_base, soil_surface, bedrock_surface;
-//var surf_amp=15,surf_wavelength=25,surf_shift=127;
 var dx_canvas, dy_canvas, x_axis_canvas, soil_surface_canvas, bedrock_surface_canvas, y_base_canvas;
 var soil_thickness, soil_surface_old;
 var Hr, soilThinFactor;
@@ -49,8 +48,6 @@ var esckey;
 var slide_body;
 var lkey, hkey, rkey, qkey, onekey, twokey;
 
-//var scenario;
-
 var playState = function (game) {
     
 };
@@ -61,7 +58,6 @@ playState.prototype = {
     create: function () {
         
         var sceneParams = g.cache.getJSON('sceneParams');
-        //scenario = "simple_slope";  // will be chosen by menu
 
         this.populateVariables(sceneParams);
                 
@@ -135,10 +131,8 @@ playState.prototype = {
         
         console.log(g.physics.box2d);
         
-        lkey.onDown.add(this.doLandslide, this);
-        hkey.onDown.add(function() {this.newHouse(worldW/2,10)}, this);
         rkey.onDown.add(this.toggleRain, this);
-        twokey.onDown.addOnce(function() {g.state.start('play2')} );
+
 
         /* CREATE: SURFACE ARRAYS */
         

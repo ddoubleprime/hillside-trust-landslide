@@ -1,8 +1,8 @@
 TODO:
 
-Priorities, Jan. 2019 update:
-    - Scenario configuration file
+Priorities, Feb. 2019 update:
     - Fix dx issue
+    - Dynamic slope/thickness tools
     - Trees
 
 
@@ -78,6 +78,7 @@ Major updates:
 
 DONE:
 
+√ Dynamic scenario selection menu based on defined scenarios
 √ Properly load parameters from interface
 √ XMLHttpRequest SYNCHRONOUS LOAD of JSON config file is not a performance hit here because of tiny config files; however, it is deprecated and will lose browser support within a few years. ASYNCHRONOUS loading is not deprecated but makes assigning out to game variables a major hassle. Another solution will be needed - Should be able to load this through PHASER g.load.json.
 √ Make sure scoping is correct overall for modularity
