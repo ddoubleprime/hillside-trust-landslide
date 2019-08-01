@@ -21,7 +21,6 @@ Implement:
 
 1. Grading shovel that smooths an area
 2. Standardize toolbar grid and place along edge not in scene
-3. Menu generation from scenarios file
 4. Trees and other local point modifiers (proximity modifier object class, usable for drains, trees, roads, etc.)
     - proximity method returns all analysis points within a radius
     - scale effect by distance
@@ -55,8 +54,7 @@ Fix:
 6. After slide recovery, balls do not properly kill upon being below the surface
 7. Double check FS equation. 
 8. Shoveling with info shower active switches the active dot - related to dot IDs changing on redraw
-9. Breaks with dx != 1, an array length issue
-10. Dots plot on top of e.g. rain button
+9. Dots plot on top of e.g. rain button
 
 
 Sprite work:
@@ -83,7 +81,7 @@ Major updates:
 DONE:
 √ Scale LS balls with world units
 √ Recovery fix - calculate LS surfce while active and base local FS on that, preventing new landslides under an acrive one.
-√ Fix dx issue
+√ Fix dx issue: Breaks with dx != 1, an array length issue
 √ Localize failure plane to bedrock surface if within a tolerance.
 √ Increase active landslide limit
 √ Dynamic scenario selection menu based on defined scenarios
