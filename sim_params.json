@@ -18,9 +18,10 @@
     },
     
     "landscape": {
-        "dx": 1,
+        "x_max": 100,
+        "dx": 2,
         "generator": "sin",
-        "modifiers": ["flat1","creek1"]
+        "modifiers": []
     },
     
     "generators": {
@@ -87,7 +88,8 @@
     },
     
     "landscape": {
-        "dx": 1,
+        "x_max": 100,
+        "dx": 2,
         "generator": "linear",
         "modifiers": []
     },
@@ -139,4 +141,5 @@
     
 }
 
+    
 }

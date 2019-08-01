@@ -1,9 +1,13 @@
 TODO:
 
-Priorities, Feb. 2019 update:
-    - Fix dx issue
-    - Dynamic slope/thickness tools
+Priorities, June 2019 update:
+
+    - Implement flat spot and other modifiers in world units
     - Trees
+    - Pier walls
+    - Columbia parkway scenario
+    - Dirt pile scenario
+    - Force low opposing slope at bottom of failure plane
 
 
 Code style work:
@@ -39,7 +43,6 @@ Implement:
 15. Slope increment tool
 16. Additional measurements in info tool
 17. Other advanced tools: pilings to bedrock, pier walls, drainage features, FS equation viewer
-18. Increase active landslide limit
 
 
 Fix:
@@ -48,7 +51,7 @@ Fix:
 2. New points added above a saturating soil (during rain) are not correctly saturating. Existing points behave correctly considering their greater depth
 3. Sometimes, points do not saturate if rain starts shortly after load
 4. Dog slow on SOME Windows machines.
-5. Slider thickness ignores positve-definite soil thickness when reducing below bedrock
+5. Slider thickness ignores positive-definite soil thickness when reducing below bedrock (not currently using slider)
 6. After slide recovery, balls do not properly kill upon being below the surface
 7. Double check FS equation. 
 8. Shoveling with info shower active switches the active dot - related to dot IDs changing on redraw
@@ -61,6 +64,7 @@ Sprite work:
 1. Improve general appearance of things.
 2. Cursor appearance overlays for tools.
 3. Info icon active/over states.
+4. Improve landslide chunks
 
 
 Scenario work:
@@ -77,7 +81,11 @@ Major updates:
 
 
 DONE:
-
+√ Scale LS balls with world units
+√ Recovery fix - calculate LS surfce while active and base local FS on that, preventing new landslides under an acrive one.
+√ Fix dx issue
+√ Localize failure plane to bedrock surface if within a tolerance.
+√ Increase active landslide limit
 √ Dynamic scenario selection menu based on defined scenarios
 √ Properly load parameters from interface
 √ XMLHttpRequest SYNCHRONOUS LOAD of JSON config file is not a performance hit here because of tiny config files; however, it is deprecated and will lose browser support within a few years. ASYNCHRONOUS loading is not deprecated but makes assigning out to game variables a major hassle. Another solution will be needed - Should be able to load this through PHASER g.load.json.
@@ -135,6 +143,7 @@ DONE:
 √ house physics poly to match shape
 √ After slide recovery, analysis points are not replaced correctly. Could be a canvas/world scaling thing.
 √ Occasional leftover ball after surface restoration (decided this was a feature)
+
     
         
 DEPRECATED NOTES

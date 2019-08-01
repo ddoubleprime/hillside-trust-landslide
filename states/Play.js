@@ -4,7 +4,7 @@ var x_axis;
 var soil_graphic,bedrock_graphic;
 var bot_pts, top_pts;
 var soilclr = 0x998355, rockclr = 0x333333;
-var dx, VE;     // x-spacing in grid units, vertical exaggeration
+var dx, x_max, VE;     // x-spacing and max x in world units (m), vertical exaggeration
 var worldW = 603, worldH = 504;
 var y_base, soil_surface, bedrock_surface;
 var dx_canvas, dy_canvas, x_axis_canvas, soil_surface_canvas, bedrock_surface_canvas, y_base_canvas;
@@ -39,7 +39,7 @@ var infoPoint = 0;
 var shovelButton, dumpButton, rainButton, houseButton, treeButton, infoButton, menuButton, resetButton;
 var rainFlag = false;
 var changeFlag = false;
-var activeLS = false, newLS = false, slideStopFlag = false;
+var activeLS = 0, newLS = false, slideStopFlag = false;
 var slideStopTime = 0;
 var active_ls_balls;
 var adding_shovel, digging_shovel, landslide_shovel, active_shovel;
@@ -100,7 +100,7 @@ playState.prototype = {
         digging_shovel = new this.Shovel(2,2);
         landslide_shovel = new this.Shovel(5,15);
         
-        x_axis = this.vector(0,100,dx); // grid units
+        x_axis = this.vector(0,x_max,dx); // grid units
         y_base = new Array(x_axis.length); // grid units
         y_base.fill(0);
 
@@ -161,7 +161,7 @@ playState.prototype = {
             var modParams;
             modParams = sceneParams[scenario].modifiers[currentModifier];
             // right now these are input as array index coordinates, which should be changed to physical space coordinates in the future.
-            // here we can unpack the input params, convert to indices, and pass them to the code below, which split out as a function will also serves as core of the grading tool.
+            // here we can unpack the input params, convert to indices, and pass them to the code below, which split out as a function will also serve as the core of the grading tool.
             soil_surface = this.makeFlatSpot(soil_surface,modParams.start_pos,modParams.end_pos,modParams.level_reference,modParams.level_offset);
             
         }
@@ -258,7 +258,7 @@ playState.prototype = {
                 this.infoShower(infoPoint);
         }                
                 
-        if (activeLS) {
+        if (activeLS > 0) {
             var n_stopped = this.checkBalls( active_ls_balls,x_axis_canvas, this.arrayMin(soil_surface_canvas,bedrock_surface_canvas) );
             
             if (n_stopped == active_ls_balls.length) {
@@ -269,7 +269,7 @@ playState.prototype = {
                 }
                 
                 if (slideStopFlag == true && ti.ms-slideStopTime > 1500) {
-                    activeLS = false;
+                    activeLS = 0;
                     slideStopFlag = false;
                     console.log('recovering surface!')
                     soil_surface = this.restoreSurface(x_axis,soil_surface,active_ls_balls);
@@ -283,7 +283,7 @@ playState.prototype = {
                 console.log('resetting stopFlag')
             } 
             
-            if (this.isEmpty(active_ls_balls)) {activeLS = false; slideStopFlag = false;}
+            if (this.isEmpty(active_ls_balls)) {activeLS = 0; slideStopFlag = false;}
         }
         
         if (changeFlag == true) {
@@ -375,7 +375,31 @@ playState.prototype = {
 
         return [xa,xi];
 
-},
+    },
+    
+    arraySnapWithin: function (arr1,arr2,thresh) {
+        // snaps the values of array arr1 to those of array arr2 
+        // if the values are within a tolerance defined by thresh
+        // arr1.length must equal arr2.length
+        // returns the results as a new array
+        if (arr1.length == arr2.length){
+            
+            var xa = Array(arr1.length);
+
+            for (var i=0;i<arr1.length;i++) {
+                if ( Math.abs(arr1[i]-arr2[i]) < thresh) {
+                    xa[i] = arr2[i];
+                } else {
+                    xa[i] = arr1[i];
+                }
+            }
+        } else {
+            console.log('arraySnapWithin: Arrays not of the same length')
+        }
+        
+        return xa;
+        
+    },
     
     sinFunc: function(arr,amp,pd,phase) {
         // returns an array with a shifted sinusoid
@@ -549,10 +573,27 @@ playState.prototype = {
     
     makeFlatSpot: function(arr,sp,ep,lr,lo) {
         // sets the level of a range of cells of an array to that of the "level_reference" cell, plus/minus an offset if desired
+        if (sp < 0) {sp = 0};
+        if (ep > arr.length) {ep = arr.length};
+        
         for (var im=sp;im<ep;im++) {
             arr[im] = soil_surface[lr]+lo;
         }
         return arr;
+    },
+    
+    relaxOpposingSlopes: function(arr,thresh) {
+        
+        // first determine the direction of the failure (plane is computed on whole array so in principle we could have several slides with different directions. Maybe we need to find the downhill side of each section where the thickness is > 0).
+        // iterate through the array and find the LR bounds of any areas where slide_thickness is nonzero
+            // these may already be determined
+        // determine the regional slope direction for each segment
+            // getRegionalSlope
+        // determine the maximum opposing slope within that segment
+        // reduce local downhill cells (makeFlatSpot?) to eliminate the opposing slope
+        
+        
+        
     },
     
     
@@ -612,22 +653,29 @@ playState.prototype = {
  
     doLandslide: function () {
         
-        var slide_thickness = this.failurePlane(x_axis,dots,6*dx);
-
+        // compute nominal failure plane
+        var slide_thickness = this.failurePlane(x_axis,dots,10);
+        var slide_max_thickness = Math.max.apply(Math,slide_thickness);
+        // threshold so the depth to plane isn't super thin
+        var thick_min = 0.1*slide_max_thickness;
         var trash;
-        [slide_thickness, trash] = this.arrayThresh(slide_thickness,0.1*Math.max.apply(Math,slide_thickness));
-        
-        slide_surface = this.arrayScale(soil_surface,1,0);
+        [slide_thickness, trash] = this.arrayThresh(slide_thickness,thick_min);
+        // smooth the computed thickness with a running mean
         slide_thickness = this.arrayRunningMean(x_axis,slide_thickness,5);
         
         var post_ls_surface = this.arrayAdd(soil_surface,slide_thickness,-1);
+        // slide base should be the bedrock surface if it's close to that
+        post_ls_surface = this.arraySnapWithin(post_ls_surface,bedrock_surface,2*thick_min)
         // base of slide body needs to be above bedrock!
         post_ls_surface = this.arrayMax(post_ls_surface,bedrock_surface);
+        
+        // Now we make sure there aren't any artificially steep opposing slopes at the base of the slide
+        // (we will probably need to make sure this only applies where there is a slide and not on eg an opposing landscape hillslide)
+        //post_ls_surface = this.relaxOpposingSlopes(post_ls_surface,0.01)
+        
         // correct thickness based on corrected surface
         slide_thickness = this.arrayAdd(soil_surface,post_ls_surface,-1)
-        
-
-        
+                
         // need the x-range of the body points (nonzero elements in thresholded thickness.)
         var slide_area_l = 0;
         //var slide_thick_local = slide_thickness.filter(this.checkNonZero);
@@ -636,7 +684,10 @@ playState.prototype = {
         var slide_base_padded = this.arrayScale(post_ls_surface,1,0.001);
         
         // before passing the base array to slidebodytoballs, need to isolate the part of the body that is above the bedrock surface
-        var ballsize = 6;  // px
+        var ballsize = slide_max_thickness * -dy_canvas / 4;  // px
+        
+        if (ballsize > 6) {ballsize = 6}; if (ballsize < 1) {ballsize = 1};
+        
         var newballs = this.slideBodyToBalls( slide_thickness,slide_base_padded,slide_area_l,slide_area_r, ballsize );
         
         // add new balls to balls array
@@ -647,8 +698,7 @@ playState.prototype = {
 
         this.doSurfaceChangedUpdates();
 
-        
-        activeLS = true;
+        activeLS += 1;
         
     },
     
@@ -742,7 +792,7 @@ playState.prototype = {
             // count stationary
             if (bb.body.velocity.x < 0.1 && bb.body.velocity.y < 0.1) {n_stopped++};
             
-            if ( bb.x >= worldW || bb.y+2 > this.interp1(x_array,surf_array,bb.x) ) {
+            if ( bb.x >= worldW || bb.y+bb.height/8 > this.interp1(x_array,surf_array,bb.x) ) {
                 bb.destroy();
                 ball_array.splice(b,1);
             }
@@ -851,15 +901,11 @@ playState.prototype = {
     
     rainemitter: function (emitter) {
         emitter.width = g.world.width;
-
         emitter.makeParticles('rain');
-
         emitter.minParticleScale = 0.1;
         emitter.maxParticleScale = 0.5;
-
         emitter.setYSpeed(300, 500);
         emitter.setXSpeed(-5, 5);
-
         emitter.minRotation = 0;
         emitter.maxRotation = 0;
         emitter.start(false, 1600, 5, 0);
@@ -912,8 +958,6 @@ playState.prototype = {
     toggleRain: function () {
         
         if (rainFlag == false) {        
-            //rainDisplay.setText("It's Raining!");
-            //rainDisplay.fill = '#0000FF';
             
             rain_emitter.on = true;
             background.tint = 0x999999;
@@ -921,8 +965,6 @@ playState.prototype = {
             rainFlag = true;  
             
         } else { 
-            //rainDisplay.setText("It's Sunny!") 
-            //rainDisplay.fill = '#FFDD22';
             
             rain_emitter.on = false;
             background.tint = 0xFFFFFF;
@@ -937,7 +979,7 @@ playState.prototype = {
     landslideListener: function() {
         
         var failing = dots.filter( function(d) {return d.FS < 1} );
-        if (failing.length > 0.01 * dots.length && activeLS == false) { this.doLandslide() };
+        if (failing.length > 0.01 * dots.length && activeLS <= 5) { this.doLandslide() };
         //console.log(failing.length)
         
     },
@@ -1116,16 +1158,23 @@ playState.prototype = {
                 //console.log('underbottomkill')
                                                    
             } else { 
-              // dot.x    (static)
-              // dot.y    (static)
+
+              var active_surface;
+              
+              if (activeLS > 0) {
+                active_surface = this.restoreSurface(x_axis,soil_surface,active_ls_balls); 
+              } else {
+                active_surface = soil_surface;
+              }
                 
-              var topY = this.interp1(x_axis,soil_surface,points[i].x);    
+              
+              var topY = this.interp1(x_axis,active_surface,points[i].x);    
               points[i].depth = topY - points[i].y;
               points[i].phi = this.deg2Rad(defaultPhi);
               points[i].cohesion=defaultCohesion; // calculated based on proximity to e.g. trees
                 
               var windowsz = Math.pow(points[i].depth,slopeWindowFactor);
-              var slope = this.getRegionalSlope(x_axis, soil_surface, points[i].x, windowsz);
+              var slope = this.getRegionalSlope(x_axis, active_surface, points[i].x, windowsz);
 
               points[i].theta = Math.atan(Math.abs(slope)); // theta in RADIANS
                 
@@ -1364,6 +1413,7 @@ playState.prototype = {
         VE = sceneParams[scenario].display.VE;
         // landscape
         dx = sceneParams[scenario].landscape.dx;
+        x_max = sceneParams[scenario].landscape.x_max;
         // soil
         Hr = sceneParams[scenario].soil.default_thickness;
         soilThinFactor = sceneParams[scenario].soil.thin_factor;
