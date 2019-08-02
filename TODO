@@ -4,10 +4,8 @@ Priorities, June 2019 update:
 
     - Implement flat spot and other modifiers in world units
     - Trees
+    - Slide surface sometimes removing hilltops when the hillside fails
     - Pier walls
-    - Columbia parkway scenario
-    - Dirt pile scenario
-    - Force low opposing slope at bottom of failure plane
 
 
 Code style work:
@@ -46,7 +44,7 @@ Implement:
 
 Fix:
 
-1. Slide surface recovery can hang for a while.
+1. Slide surface sometimes removing hilltops when the hillside fails
 2. New points added above a saturating soil (during rain) are not correctly saturating. Existing points behave correctly considering their greater depth
 3. Sometimes, points do not saturate if rain starts shortly after load
 4. Dog slow on SOME Windows machines.
@@ -63,11 +61,14 @@ Sprite work:
 2. Cursor appearance overlays for tools.
 3. Info icon active/over states.
 4. Improve landslide chunks
+    - color by depth, along with soil?
 
 
 Scenario work:
 
 1. Adjustable global thickness and angle for simple slope scenario
+2. Columbia parkway scenario
+3. Dirt pile scenario?
 
 
 Major updates:
@@ -79,8 +80,12 @@ Major updates:
 
 
 DONE:
+√ Slide surface recovery can hang for a while.
+    - seems to be fixed
+√ Force low opposing slope at bottom of failure plane
+    - largely fixed by updates to landslide behavior and a wider dx
 √ Scale LS balls with world units
-√ Recovery fix - calculate LS surfce while active and base local FS on that, preventing new landslides under an acrive one.
+√ Recovery fix - calculate LS surfce while active and base local FS on that, preventing new landslides under an active one.
 √ Fix dx issue: Breaks with dx != 1, an array length issue
 √ Localize failure plane to bedrock surface if within a tolerance.
 √ Increase active landslide limit

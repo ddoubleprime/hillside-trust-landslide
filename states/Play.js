@@ -17,7 +17,7 @@ var grav = 9.81;
 
 var dots;
 var dotGroup;
-var ptDensity = .9;   // points per sq phys unit
+var ptDensity;   // points per sq phys unit
 var showdotmode = true;
 var house, tree;
 
@@ -39,7 +39,7 @@ var infoPoint = 0;
 var shovelButton, dumpButton, rainButton, houseButton, treeButton, infoButton, menuButton, resetButton;
 var rainFlag = false;
 var changeFlag = false;
-var activeLS = 0, newLS = false, slideStopFlag = false;
+var activeLS = 0, newLS = false, slideStopFlag = false, maxLS = 4;
 var slideStopTime = 0;
 var active_ls_balls;
 var adding_shovel, digging_shovel, landslide_shovel, active_shovel;
@@ -891,7 +891,7 @@ playState.prototype = {
             } // for j
 
             if (npt > 0) {
-                hx[i] = -(worldH-dpMax)/dy_canvas-yarr[i]-.4;   // convert to physical units for return
+                hx[i] = -(worldH-dpMax)/dy_canvas-yarr[i];   // convert to physical units for return
             }
         }     // for i
     
@@ -979,7 +979,7 @@ playState.prototype = {
     landslideListener: function() {
         
         var failing = dots.filter( function(d) {return d.FS < 1} );
-        if (failing.length > 0.01 * dots.length && activeLS <= 5) { this.doLandslide() };
+        if (failing.length > 0.01 * dots.length && activeLS <= maxLS) { this.doLandslide() };
         //console.log(failing.length)
         
     },
@@ -1420,6 +1420,7 @@ playState.prototype = {
         defaultCohesion = sceneParams[scenario].soil.default_cohesion;
         defaultSaturation = sceneParams[scenario].soil.default_saturation;
         defaultPhi = sceneParams[scenario].soil.default_phi;
+        ptDensity = sceneParams[scenario].soil.point_density;
     },
     
     makeToolButtons: function(toolOptions) {
@@ -1526,7 +1527,7 @@ playState.prototype = {
             var sx = elementPlacements.streams[i]*dx_canvas;
             var sy = this.interp1(x_axis_canvas,soil_surface_canvas,hx);
 
-            // stream = this.newStream(sx, sy); // code to genmerate a stream
+            // stream = this.newStream(sx, sy); // code to generate a stream
         }
 }
     

@@ -64,7 +64,8 @@
         "default_saturation": 0.25,
         "default_phi": 24,
         "default_thickness": 2.5,
-        "thin_factor": 0.96
+        "thin_factor": 0.96,
+        "point_density": 0.8
     }
     
 
@@ -134,7 +135,8 @@
         "default_saturation": 0.25,
         "default_phi": 24,
         "default_thickness": 2.5,
-        "thin_factor": 0.96
+        "thin_factor": 0.96,
+        "point_density": 0.8
     }
     
 
