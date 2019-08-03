@@ -26,7 +26,7 @@ var ti, tiEvent, timeRate = 10000;  // ms per real-world time unit
 var timeKeeper, nowTime, worldTime = 0;
 var timeDisplay, rainDisplay, rainTime, rainStartTime;
 var slopetext, saturationtext, FStext;
-var checkForLSInterval = 3000, queryInterval = 250;     // in ms
+var checkForLSInterval = 2000, queryInterval = 250;     // in ms
         
 var box2d;
 
@@ -713,7 +713,7 @@ playState.prototype = {
         var slide_base_padded = this.arrayScale(post_ls_surface,1,0.001);
         
         // before passing the base array to slidebodytoballs, need to isolate the part of the body that is above the bedrock surface
-        var ballsize = slide_max_thickness * -dy_canvas / 4;  // px
+        var ballsize = slide_max_thickness * -dy_canvas / 5;  // px
         
         if (ballsize > 6) {ballsize = 6}; if (ballsize < 1) {ballsize = 1};
         
@@ -912,8 +912,8 @@ playState.prototype = {
 
                 if (points[j].x/dx_canvas >= xi-0.5*wdw && points[j].x/dx_canvas <= xi+0.5*wdw) {
                     npt++;
-                    if (points[j].body.y < dpMax) {
-                        dpMax = points[j].body.y;  // here in canvas units
+                    if (points[j].body.y - points[j].height/2 < dpMax) {
+                        dpMax = points[j].body.y - points[j].height/2;  // here in canvas units
                     }
                 }
 

@@ -4,7 +4,8 @@ Priorities, August 2019 update:
 
     - Implement flat spot and other modifiers in world units
     - Trees
-    - Pier walls
+    - Mode mutual exclusivity / rain button switches out of all modes
+
 
 
 Code style work:
