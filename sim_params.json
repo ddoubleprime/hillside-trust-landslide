@@ -136,7 +136,7 @@
         "default_phi": 24,
         "default_thickness": 2.5,
         "thin_factor": 0.96,
-        "point_density": 0.8
+        "point_density": 1
     }
     
 

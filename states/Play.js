@@ -26,7 +26,7 @@ var ti, tiEvent, timeRate = 10000;  // ms per real-world time unit
 var timeKeeper, nowTime, worldTime = 0;
 var timeDisplay, rainDisplay, rainTime, rainStartTime;
 var slopetext, saturationtext, FStext;
-var checkForLSInterval = 2000, queryInterval = 250;     // in ms
+var checkForLSInterval = 1000, queryInterval = 250;     // in ms
         
 var box2d;
 
@@ -37,7 +37,7 @@ var infoPoint = 0;
 var shovelButton, dumpButton, rainButton, houseButton, treeButton, infoButton, menuButton, resetButton;
 var rainFlag = false;
 var changeFlag = false;
-var activeLS = 0, newLS = false, slideStopFlag = false, maxLS = 4;
+var activeLS = 0, newLS = false, slideStopFlag = false, maxLS = 10;
 var slideStopTime = 0;
 var active_ls_balls;
 var adding_shovel, digging_shovel, landslide_shovel, active_shovel;
