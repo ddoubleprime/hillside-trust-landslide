@@ -1,10 +1,9 @@
 TODO:
 
-Priorities, June 2019 update:
+Priorities, August 2019 update:
 
     - Implement flat spot and other modifiers in world units
     - Trees
-    - Slide surface sometimes removing hilltops when the hillside fails
     - Pier walls
 
 
@@ -44,7 +43,6 @@ Implement:
 
 Fix:
 
-1. Slide surface sometimes removing hilltops when the hillside fails
 2. New points added above a saturating soil (during rain) are not correctly saturating. Existing points behave correctly considering their greater depth
 3. Sometimes, points do not saturate if rain starts shortly after load
 4. Dog slow on SOME Windows machines.
@@ -80,6 +78,8 @@ Major updates:
 
 
 DONE:
+√ Slide surface sometimes removing hilltops when the hillside fails
+        - it's related to the location of the slide plane on the bedrock - when hilltop soil is thinner than the threshold it's getting included in the snap-to.
 √ Slide surface recovery can hang for a while.
     - seems to be fixed
 √ Force low opposing slope at bottom of failure plane

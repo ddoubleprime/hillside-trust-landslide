@@ -17,8 +17,7 @@ var grav = 9.81;
 
 var dots;
 var dotGroup;
-var ptDensity;   // points per sq phys unit
-var showdotmode = true;
+var ptDensity;   // points per sq phys unit - set in scene params
 var house, tree;
 
 var ksat = 0.1;        // infiltration rate / conductivity term, scales the rate of progress of the wetting front
@@ -29,7 +28,6 @@ var timeDisplay, rainDisplay, rainTime, rainStartTime;
 var slopetext, saturationtext, FStext;
 var checkForLSInterval = 3000, queryInterval = 250;     // in ms
         
-var physBoxTest;
 var box2d;
 
 var shovelMode = false;
@@ -377,6 +375,29 @@ playState.prototype = {
 
     },
     
+    arrayThreshReplace: function (arr1,arr2,thresh) {
+        // returns a new array that is the same length as arr1 and arr2
+        // and takes the value of arr2 where elements of arr1 are greater than thresh
+        // and arr1 elsewhere
+        if (arr1.length == arr2.length){
+            
+            var xa = Array(arr1.length);
+
+            for (var i=0;i<arr1.length;i++) {
+                if ( arr1[i] > thresh) {
+                    xa[i] = arr2[i];
+                } else {
+                    xa[i] = arr1[i];
+                }
+            }
+        } else {
+            console.log('arrayThreshReplace: Arrays not of the same length')
+        }
+        
+        return xa;
+        
+    },
+    
     arraySnapWithin: function (arr1,arr2,thresh) {
         // snaps the values of array arr1 to those of array arr2 
         // if the values are within a tolerance defined by thresh
@@ -662,10 +683,18 @@ playState.prototype = {
         [slide_thickness, trash] = this.arrayThresh(slide_thickness,thick_min);
         // smooth the computed thickness with a running mean
         slide_thickness = this.arrayRunningMean(x_axis,slide_thickness,5);
-        
-        var post_ls_surface = this.arrayAdd(soil_surface,slide_thickness,-1);
         // slide base should be the bedrock surface if it's close to that
-        post_ls_surface = this.arraySnapWithin(post_ls_surface,bedrock_surface,2*thick_min)
+        // snap slide_thickness to pre-slide soil thickness
+        console.log(slide_thickness,soil_thickness,'before')
+        var slide_thickness_snap = this.arraySnapWithin(slide_thickness,soil_thickness,2*thick_min)
+        // need a mask of where slide_thickness == 0
+        // avoids snapping thin soils that aren't part of the landslide
+        slide_thickness = this.arrayThreshReplace(slide_thickness,slide_thickness_snap,0)
+        
+        console.log(slide_thickness,soil_thickness,'after')
+
+        var post_ls_surface = this.arrayAdd(soil_surface,slide_thickness,-1);
+
         // base of slide body needs to be above bedrock!
         post_ls_surface = this.arrayMax(post_ls_surface,bedrock_surface);
         
@@ -677,8 +706,8 @@ playState.prototype = {
         slide_thickness = this.arrayAdd(soil_surface,post_ls_surface,-1)
                 
         // need the x-range of the body points (nonzero elements in thresholded thickness.)
+        // actually currently using the whole domain
         var slide_area_l = 0;
-        //var slide_thick_local = slide_thickness.filter(this.checkNonZero);
         var slide_area_r = x_axis.length-1;
             
         var slide_base_padded = this.arrayScale(post_ls_surface,1,0.001);
@@ -697,7 +726,7 @@ playState.prototype = {
         soil_surface = post_ls_surface;        
 
         this.doSurfaceChangedUpdates();
-
+        
         activeLS += 1;
         
     },
