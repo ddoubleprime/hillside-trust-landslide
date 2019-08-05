@@ -20,7 +20,7 @@ var dotGroup;
 var ptDensity;   // points per sq phys unit - set in scene params
 var house, tree;
 
-var ksat = 0.1;        // infiltration rate / conductivity term, scales the rate of progress of the wetting front
+var ksat = 1;        // infiltration rate / conductivity term, scales the rate of progress of the wetting front
 var defaultCohesion, defaultSaturation, defaultPhi, slopeWindowFactor = 2;
 var ti, tiEvent, timeRate = 10000;  // ms per real-world time unit
 var timeKeeper, nowTime, worldTime = 0;
@@ -160,7 +160,20 @@ playState.prototype = {
             modParams = sceneParams[scenario].modifiers[currentModifier];
             // right now these are input as array index coordinates, which should be changed to physical space coordinates in the future.
             // here we can unpack the input params, convert to indices, and pass them to the code below, which split out as a function will also serve as the core of the grading tool.
-            soil_surface = this.makeFlatSpot(soil_surface,modParams.start_pos,modParams.end_pos,modParams.level_reference,modParams.level_offset);
+            //convert start_pos to index
+            var sp = this.getAdjacentXPoints(x_axis,modParams.start_pos)[0];
+            // convert end_pos to index
+            var ep = this.getAdjacentXPoints(x_axis,modParams.end_pos)[1];
+            // convert level reference position to index
+            var lr;
+            if (modParams.level_reference == modParams.start_pos) {
+                lr = sp;
+            } else if (modParams.level_reference == modParams.end_pos) {
+                lr = ep;
+            } else {
+                lr = this.getAdjacentXPoints(x_axis,modParams.level_reference)[0];
+            }
+            soil_surface = this.makeFlatSpot(soil_surface,sp,ep,lr,modParams.level_offset);
             
         }
        
@@ -211,6 +224,7 @@ playState.prototype = {
 
         if (rainFlag) {            
             rainTime = nowTime - rainStartTime;
+            //dots = this.updateAnalysisPoints(dots);
         }
        
         /* Routine here for scooping / dumping 
@@ -683,15 +697,13 @@ playState.prototype = {
         [slide_thickness, trash] = this.arrayThresh(slide_thickness,thick_min);
         // smooth the computed thickness with a running mean
         slide_thickness = this.arrayRunningMean(x_axis,slide_thickness,5);
+        
         // slide base should be the bedrock surface if it's close to that
         // snap slide_thickness to pre-slide soil thickness
-        console.log(slide_thickness,soil_thickness,'before')
         var slide_thickness_snap = this.arraySnapWithin(slide_thickness,soil_thickness,2*thick_min)
         // need a mask of where slide_thickness == 0
         // avoids snapping thin soils that aren't part of the landslide
         slide_thickness = this.arrayThreshReplace(slide_thickness,slide_thickness_snap,0)
-        
-        console.log(slide_thickness,soil_thickness,'after')
 
         var post_ls_surface = this.arrayAdd(soil_surface,slide_thickness,-1);
 
@@ -1342,7 +1354,7 @@ playState.prototype = {
         // function updates both the saturation and satDepth fields of the point object.
         if (rainFlag) {
             // calculate the depth of the wetting front, which increases proportionally to the sqrt(time) during rain. this is set up to be spatially variable but for now it isn't
-            point.satDepth += ksat * Math.sqrt(rainTime);
+            point.satDepth = ksat * Math.sqrt(rainTime);
             if (point.satDepth >= point.depth) {
                 point.saturation += 1 * (queryInterval/timeRate); 
             }

@@ -1,11 +1,9 @@
 TODO:
 
 Priorities, August 2019 update:
-
-    - Implement flat spot and other modifiers in world units
-    - Trees
+    
     - Mode mutual exclusivity / rain button switches out of all modes
-
+    - Trees
 
 
 Code style work:
@@ -43,15 +41,13 @@ Implement:
 
 
 Fix:
-
-2. New points added above a saturating soil (during rain) are not correctly saturating. Existing points behave correctly considering their greater depth
-3. Sometimes, points do not saturate if rain starts shortly after load
-4. Dog slow on SOME Windows machines.
+1. Dog slow on SOME Windows machines and Mac Firefox. v0.3.0b seems to have slowed performance in firefox (major)
+3. Shoveling with info shower active switches the active dot - related to dot IDs changing on redraw (moderate)
+4. New points added above a saturating soil (during rain) are not correctly saturating. Existing points behave correctly considering their greater depth (minor)
 5. Slider thickness ignores positive-definite soil thickness when reducing below bedrock (not currently using slider)
-6. After slide recovery, balls do not properly kill upon being below the surface
-7. Double check FS equation. 
-8. Shoveling with info shower active switches the active dot - related to dot IDs changing on redraw
-9. Dots plot on top of e.g. rain button
+6. After slide recovery, balls do not properly kill upon being below the surface (minor)
+7. Double check FS equation. (minor)
+8. Dots plot on top of e.g. rain button (minor)
 
 
 Sprite work:
@@ -79,6 +75,8 @@ Major updates:
 
 
 DONE:
+√ Sometimes, points do not saturate if rain starts shortly after load (moderate)
+√ Implement flat spot and other modifiers in world units
 √ Slide surface sometimes removing hilltops when the hillside fails
         - it's related to the location of the slide plane on the bedrock - when hilltop soil is thinner than the threshold it's getting included in the snap-to.
 √ Slide surface recovery can hang for a while.
