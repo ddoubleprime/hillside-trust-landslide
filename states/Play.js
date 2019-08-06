@@ -46,6 +46,37 @@ var esckey;
 var slide_body;
 var lkey, hkey, rkey, qkey, onekey, twokey;
 
+var modes;
+var modes_default = 
+{
+    "shovel": {
+        "on": false,
+        "excludes": true,
+        "excluded": true
+    },
+
+    "dump": {
+        "on": false,
+        "excludes": true,
+        "excluded": true
+    },
+    
+    "rain": {
+        "on": false,
+        "excludes": true,
+        "excluded": false
+    },
+    
+    "info": {
+        "on": false,
+        "excludes": true,
+        "excluded": false
+    },
+    
+};
+
+
+
 var playState = function (game) {
     
 };
@@ -56,9 +87,10 @@ playState.prototype = {
     create: function () {
         
         var sceneParams = g.cache.getJSON('sceneParams');
-
         this.populateVariables(sceneParams);
-                
+        
+        modes = this.clone(modes_default);
+        
         ti = g.time.create();
         tiEvent = g.time.create();
         background = g.add.image(0, 0, 'sky_dust');
@@ -72,9 +104,13 @@ playState.prototype = {
         slopetext = g.add.text(worldW/5-30, 13, "Slope gradient:",  { font: '14pt Arial', fill: '#001155' });
         saturationtext = g.add.text(worldW/5-30, 33, "Saturation:",  { font: '14pt Arial', fill: '#001155' });
         FStext = g.add.text(worldW/5-30, 53, "Factor of Safety:",  { font: '14pt Arial', fill: '#001155' });
-        this.infoToggle(infoMode);
+        this.infoToggle(modes.info.on);
         
-        
+
+        modes.dump.on = true;
+
+        console.log(modes,modes_default)
+
         // Set up handlers for mouse events
         g.input.mouse.enabled = true;
         g.input.onDown.add(this.mouseDragStart, this);
@@ -222,7 +258,7 @@ playState.prototype = {
         nowTime = ti.ms/timeRate;  // simulation world time
         timeDisplay.setText('Day: ' + Math.round(nowTime*10)/10);
 
-        if (rainFlag) {            
+        if (modes.rain.on) {            
             rainTime = nowTime - rainStartTime;
             //dots = this.updateAnalysisPoints(dots);
         }
@@ -230,7 +266,7 @@ playState.prototype = {
         /* Routine here for scooping / dumping 
             Uses something like a gaussian shape subtracted across the range of x-indices selected. These defined by a shovel_width parameter in world grid units.
         */
-        if (shovelMode) {
+        if (modes.shovel.on) {
             
             active_shovel = digging_shovel; 
             // glowing button
@@ -242,7 +278,7 @@ playState.prototype = {
             
         } // shovelmode
         
-        if (dumpMode) {
+        if (modes.dump.on) {
                 
             active_shovel = adding_shovel;    
             
@@ -253,11 +289,11 @@ playState.prototype = {
             g.canvas.style.cursor = "cell";
             g.input.onDown.addOnce(this.digActiveShovel, this);
             
-        } // shovelmode
+        } // dumpmode
  
-        if (infoMode) {
+        if (modes.info.on) {
 
-            if (!shovelMode && !dumpMode && !this.overButton()) {
+            if (!modes.shovel.on && !modes.dump.on && !this.overButton()) {
                 
                 g.canvas.style.cursor = "help";
                 
@@ -956,10 +992,61 @@ playState.prototype = {
     
 /* CALLBACKS and INPUT EVENTS */    
     
+    setmode: function (modename,value) {
+    // takes string modename and value to assign
+    // value should be logical T or F
+    if (value === true || value === 1) {
+            // turn mode "modename" on and other excluded modes off
+            this.resetmodes();
+        } else if (value === false || value === 0) {
+            // turn mode "modename" off
+        } else {
+            console.log("setmode: input value must be logical true or false, or 1 or 0.");
+        };
+    },
+    
+    resetmodes: function () {
+        // reapplies default values to all modes
+        
+        
+    },
+    
+    clone: function (obj) {
+        // Handle the 3 simple types, and null or undefined
+        if (null == obj || "object" != typeof obj) return obj;
+
+        // Handle Date
+        if (obj instanceof Date) {
+            var copy = new Date();
+            copy.setTime(obj.getTime());
+            return copy;
+        }
+
+        // Handle Array
+        if (obj instanceof Array) {
+            var copy = [];
+            for (var i = 0, len = obj.length; i < len; i++) {
+                copy[i] = this.clone(obj[i]);
+            }
+            return copy;
+        }
+
+        // Handle Object
+        if (obj instanceof Object) {
+            var copy = {};
+            for (var attr in obj) {
+                if (obj.hasOwnProperty(attr)) copy[attr] = this.clone(obj[attr]);
+            }
+            return copy;
+        }
+
+        throw new Error("Unable to copy obj! Its type isn't supported.");
+    },
+    
     toggleShovelMode: function () {
         
-        if (shovelMode == true) {
-            shovelMode = false;
+        if (modes.shovel.on == true) {
+            modes.shovel.on = false;
             shovelButton.alpha = 0.8
             shovelButton.setFrames(1, 3, 2, 3);
             g.canvas.style.cursor = "default"
@@ -968,18 +1055,18 @@ playState.prototype = {
             g.input.onDown.remove(this.digActiveShovel, this);            
         } else {
             // one mode at a time. this approach will become unwieldy with more than a few buttons
-            if (dumpMode) {
+            if (modes.dump.on) {
                 this.toggleDumpMode();
             }            
-            shovelMode = true;
+            modes.shovel.on = true;
             esckey.onDown.addOnce(this.toggleShovelMode, this);
         }
     },
     
     toggleDumpMode: function () {
 
-        if (dumpMode == true) {
-            dumpMode = false;
+        if (modes.dump.on == true) {
+            modes.dump.on = false;
             dumpButton.alpha = 0.8;
             dumpButton.setFrames(1, 3, 2, 3);
             g.canvas.style.cursor = "default"
@@ -988,22 +1075,22 @@ playState.prototype = {
             g.input.onDown.remove(this.digActiveShovel, this);
         } else {            
             // one mode at a time. this approach will become unwieldy with more than a few buttons
-            if (shovelMode) {
+            if (modes.shovel.on) {
                 this.toggleShovelMode();
             }
-            dumpMode = true;
+            modes.dump.on = true;
             esckey.onDown.addOnce(this.toggleDumpMode, this);
         }
     },
     
     toggleRain: function () {
         
-        if (rainFlag == false) {        
+        if (modes.rain.on == false) {        
             
             rain_emitter.on = true;
             background.tint = 0x999999;
             rainStartTime = nowTime;            
-            rainFlag = true;  
+            modes.rain.on = true;  
             
         } else { 
             
@@ -1011,7 +1098,7 @@ playState.prototype = {
             background.tint = 0xFFFFFF;
 
             rainTime = 0;            
-            rainFlag = false;            
+            modes.rain.on = false;            
         }
         
         
@@ -1039,8 +1126,8 @@ playState.prototype = {
     },
 
     houseButtonClick: function() {
-        shovelMode = true; 
-        dumpMode = true; 
+        modes.shovel.on = true; 
+        modes.dump.on = true; 
         this.toggleShovelMode(); 
         this.toggleDumpMode(); 
         this.newHouse(worldW/2,10)
@@ -1056,7 +1143,7 @@ playState.prototype = {
     
     inspectPoints: function() {
         // shows info about nearest analysis point
-        if (infoMode) {
+        if (modes.info.on) {
             this.infoToggle(false)
         } else {
             this.infoToggle(true)
@@ -1230,7 +1317,7 @@ playState.prototype = {
             
 
           } // for i = points
-        if (infoMode) {
+        if (modes.info.on) {
           if (points[infoPoint]) {
               points[infoPoint].scale = 6;
               points[infoPoint].color = 0xFFFF00;         
@@ -1352,7 +1439,7 @@ playState.prototype = {
     
     saturationCalc: function(point) {
         // function updates both the saturation and satDepth fields of the point object.
-        if (rainFlag) {
+        if (modes.rain.on) {
             // calculate the depth of the wetting front, which increases proportionally to the sqrt(time) during rain. this is set up to be spatially variable but for now it isn't
             point.satDepth = ksat * Math.sqrt(rainTime);
             if (point.satDepth >= point.depth) {
@@ -1418,12 +1505,12 @@ playState.prototype = {
             slopetext.visible = true;
             saturationtext.visible = true;
             FStext.visible = true;
-            infoMode = true;
+            modes.info.on = true;
         } else {
             slopetext.visible = false;
             saturationtext.visible = false;
             FStext.visible = false;
-            infoMode = false;
+            modes.info.on = false;
         }
     
     },
