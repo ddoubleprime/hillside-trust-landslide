@@ -89,7 +89,7 @@ playState.prototype = {
         var sceneParams = g.cache.getJSON('sceneParams');
         this.populateVariables(sceneParams);
         
-        modes = this.clone(modes_default);
+        modes = this.objClone(modes_default);
         
         ti = g.time.create();
         tiEvent = g.time.create();
@@ -105,11 +105,7 @@ playState.prototype = {
         saturationtext = g.add.text(worldW/5-30, 33, "Saturation:",  { font: '14pt Arial', fill: '#001155' });
         FStext = g.add.text(worldW/5-30, 53, "Factor of Safety:",  { font: '14pt Arial', fill: '#001155' });
         this.infoToggle(modes.info.on);
-        
 
-        modes.dump.on = true;
-
-        console.log(modes,modes_default)
 
         // Set up handlers for mouse events
         g.input.mouse.enabled = true;
@@ -260,7 +256,6 @@ playState.prototype = {
 
         if (modes.rain.on) {            
             rainTime = nowTime - rainStartTime;
-            //dots = this.updateAnalysisPoints(dots);
         }
        
         /* Routine here for scooping / dumping 
@@ -655,6 +650,8 @@ playState.prototype = {
     
     relaxOpposingSlopes: function(arr,thresh) {
         
+        // PROBABLY NO LONGER NEEDED v 0.3.0 Aug 2019
+        
         // first determine the direction of the failure (plane is computed on whole array so in principle we could have several slides with different directions. Maybe we need to find the downhill side of each section where the thickness is > 0).
         // iterate through the array and find the LR bounds of any areas where slide_thickness is nonzero
             // these may already be determined
@@ -662,11 +659,10 @@ playState.prototype = {
             // getRegionalSlope
         // determine the maximum opposing slope within that segment
         // reduce local downhill cells (makeFlatSpot?) to eliminate the opposing slope
-        
-        
-        
+
     },
     
+
     
 /* SUPPORT FUNCTIONS */
     
@@ -944,6 +940,38 @@ playState.prototype = {
         
     },
     
+    objClone: function (obj) {
+        // Handle the 3 simple types, and null or undefined
+        if (null == obj || "object" != typeof obj) return obj;
+
+        // Handle Date
+        if (obj instanceof Date) {
+            var copy = new Date();
+            copy.setTime(obj.getTime());
+            return copy;
+        }
+
+        // Handle Array
+        if (obj instanceof Array) {
+            var copy = [];
+            for (var i = 0, len = obj.length; i < len; i++) {
+                copy[i] = this.objClone(obj[i]);
+            }
+            return copy;
+        }
+
+        // Handle Object
+        if (obj instanceof Object) {
+            var copy = {};
+            for (var attr in obj) {
+                if (obj.hasOwnProperty(attr)) copy[attr] = this.objClone(obj[attr]);
+            }
+            return copy;
+        }
+
+        throw new Error("Unable to copy obj! Its type isn't supported.");
+    },
+    
     depositThickness: function(xarr,yarr,points,wdw) {
         
         var hx = this.zeros(xarr.length);
@@ -995,70 +1023,48 @@ playState.prototype = {
     setmode: function (modename,value) {
     // takes string modename and value to assign
     // value should be logical T or F
-    if (value === true || value === 1) {
+        if (value === true || value === 1) {
             // turn mode "modename" on and other excluded modes off
-            this.resetmodes();
+            if (modes[modename].excludes) {
+                this.resetmodes(1);
+            }
+            modes[modename].on = true;
         } else if (value === false || value === 0) {
             // turn mode "modename" off
+            modes[modename].on = false;
         } else {
             console.log("setmode: input value must be logical true or false, or 1 or 0.");
         };
-    },
-    
-    resetmodes: function () {
-        // reapplies default values to all modes
-        
         
     },
     
-    clone: function (obj) {
-        // Handle the 3 simple types, and null or undefined
-        if (null == obj || "object" != typeof obj) return obj;
-
-        // Handle Date
-        if (obj instanceof Date) {
-            var copy = new Date();
-            copy.setTime(obj.getTime());
-            return copy;
-        }
-
-        // Handle Array
-        if (obj instanceof Array) {
-            var copy = [];
-            for (var i = 0, len = obj.length; i < len; i++) {
-                copy[i] = this.clone(obj[i]);
+    resetmodes: function (toggle) {
+        if (toggle == 0) {
+            // reapplies default values to all modes
+            modes = this.objClone(modes_default); 
+        } else {
+            // reset all "excluded" fields but leave others alone
+            for (var attr in modes) {
+                if (modes[attr].excluded) {
+                    modes[attr].on = false;
+                }
             }
-            return copy;
         }
-
-        // Handle Object
-        if (obj instanceof Object) {
-            var copy = {};
-            for (var attr in obj) {
-                if (obj.hasOwnProperty(attr)) copy[attr] = this.clone(obj[attr]);
-            }
-            return copy;
-        }
-
-        throw new Error("Unable to copy obj! Its type isn't supported.");
     },
+    
     
     toggleShovelMode: function () {
         
         if (modes.shovel.on == true) {
-            modes.shovel.on = false;
+            this.setmode("shovel",false);
             shovelButton.alpha = 0.8
             shovelButton.setFrames(1, 3, 2, 3);
             g.canvas.style.cursor = "default"
             // destroy shovel listeners
             esckey.onDown.remove(this.toggleShovelMode, this);
             g.input.onDown.remove(this.digActiveShovel, this);            
-        } else {
-            // one mode at a time. this approach will become unwieldy with more than a few buttons
-            if (modes.dump.on) {
-                this.toggleDumpMode();
-            }            
-            modes.shovel.on = true;
+        } else {        
+            this.setmode("shovel",true);
             esckey.onDown.addOnce(this.toggleShovelMode, this);
         }
     },
@@ -1066,7 +1072,7 @@ playState.prototype = {
     toggleDumpMode: function () {
 
         if (modes.dump.on == true) {
-            modes.dump.on = false;
+            this.setmode("dump",false);
             dumpButton.alpha = 0.8;
             dumpButton.setFrames(1, 3, 2, 3);
             g.canvas.style.cursor = "default"
@@ -1074,11 +1080,7 @@ playState.prototype = {
             esckey.onDown.remove(this.toggleDumpMode, this);
             g.input.onDown.remove(this.digActiveShovel, this);
         } else {            
-            // one mode at a time. this approach will become unwieldy with more than a few buttons
-            if (modes.shovel.on) {
-                this.toggleShovelMode();
-            }
-            modes.dump.on = true;
+            this.setmode("dump",true);
             esckey.onDown.addOnce(this.toggleDumpMode, this);
         }
     },
@@ -1090,7 +1092,7 @@ playState.prototype = {
             rain_emitter.on = true;
             background.tint = 0x999999;
             rainStartTime = nowTime;            
-            modes.rain.on = true;  
+            this.setmode("rain",true);
             
         } else { 
             
@@ -1098,7 +1100,7 @@ playState.prototype = {
             background.tint = 0xFFFFFF;
 
             rainTime = 0;            
-            modes.rain.on = false;            
+            this.setmode("rain",false);            
         }
         
         
@@ -1505,12 +1507,12 @@ playState.prototype = {
             slopetext.visible = true;
             saturationtext.visible = true;
             FStext.visible = true;
-            modes.info.on = true;
+            this.setmode("info",true);
         } else {
             slopetext.visible = false;
             saturationtext.visible = false;
             FStext.visible = false;
-            modes.info.on = false;
+            this.setmode("info",false);
         }
     
     },
