@@ -1,9 +1,12 @@
 TODO:
 
-Priorities, August 2019 update:
+Priorities, Oct 2019 update:
     
-    - Mode mutual exclusivity / rain button switches out of all modes
     - Trees
+    - Standardize toolbar grid and place along edge not in scene
+    - Cursor appearance overlays for tools
+    - Info icon active/over states
+    - Tool sprite improvements
 
 
 Code style work:
@@ -75,6 +78,7 @@ Major updates:
 
 
 DONE:
+√ Mode mutual exclusivity / rain button switches out of all modes
 √ Sometimes, points do not saturate if rain starts shortly after load (moderate)
 √ Implement flat spot and other modifiers in world units
 √ Slide surface sometimes removing hilltops when the hillside fails

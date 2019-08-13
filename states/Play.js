@@ -229,7 +229,7 @@ playState.prototype = {
         bot_pts = this.two1dto2d(x_axis_canvas,y_base_canvas);
         
         // assign physics bodies and properties        
-        g.physics.box2d.enable(soil_graphic); // not necessary - make surface a free body?
+        g.physics.box2d.enable(soil_graphic); 
         
         this.updateLandscapeGraphics();
         
@@ -1045,8 +1045,12 @@ playState.prototype = {
         } else {
             // reset all "excluded" fields but leave others alone
             for (var attr in modes) {
-                if (modes[attr].excluded) {
-                    modes[attr].on = false;
+                if (modes[attr].excluded && modes[attr].on) {
+                    
+                    if (attr === "shovel") {this.toggleShovelMode()};
+                    if (attr === "dump") {this.toggleDumpMode()};
+                    console.log(attr)
+                    // need to run toggle on any that are true rather than just assigning false
                 }
             }
         }
