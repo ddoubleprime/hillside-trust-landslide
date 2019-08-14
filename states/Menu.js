@@ -26,7 +26,7 @@ var menuState = {
 
        
         // version text  
-        g.add.text(400, 480, "Version 0.2.0b, 2019-01-21", {font:"12pt Arial", stroke:"#000000", strokeThickness:0, fill: "#FFFF99"});
+        g.add.text(400, 480, "Version 0.3.0b, 2019-08-12", {font:"12pt Arial", stroke:"#000000", strokeThickness:0, fill: "#FFFF99"});
 
 
     },
@@ -55,7 +55,6 @@ var menuState = {
     up: function(item) {
 
         scenario = item.scenario; 
-
         g.state.start('play');
 
     }

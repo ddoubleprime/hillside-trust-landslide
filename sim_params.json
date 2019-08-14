@@ -21,7 +21,7 @@
         "x_max": 100,
         "dx": 2,
         "generator": "sin",
-        "modifiers": []
+        "modifiers": ["flat1","creek1"]
     },
     
     "generators": {
@@ -38,9 +38,9 @@
     
     "modifiers": {
         "flat1": {
-            "start_pos": 2,
+            "start_pos": 6,
             "end_pos": 22,
-            "level_reference": 2, 
+            "level_reference": 20, 
             "level_offset": 0
         },
         
@@ -64,7 +64,8 @@
         "default_saturation": 0.25,
         "default_phi": 24,
         "default_thickness": 2.5,
-        "thin_factor": 0.96
+        "thin_factor": 0.96,
+        "point_density": 0.8
     }
     
 
@@ -134,7 +135,8 @@
         "default_saturation": 0.25,
         "default_phi": 24,
         "default_thickness": 2.5,
-        "thin_factor": 0.96
+        "thin_factor": 0.96,
+        "point_density": 1
     }
     
 

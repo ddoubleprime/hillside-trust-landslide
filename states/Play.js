@@ -17,19 +17,17 @@ var grav = 9.81;
 
 var dots;
 var dotGroup;
-var ptDensity = .9;   // points per sq phys unit
-var showdotmode = true;
+var ptDensity;   // points per sq phys unit - set in scene params
 var house, tree;
 
-var ksat = 0.1;        // infiltration rate / conductivity term, scales the rate of progress of the wetting front
+var ksat = 1;        // infiltration rate / conductivity term, scales the rate of progress of the wetting front
 var defaultCohesion, defaultSaturation, defaultPhi, slopeWindowFactor = 2;
 var ti, tiEvent, timeRate = 10000;  // ms per real-world time unit
 var timeKeeper, nowTime, worldTime = 0;
 var timeDisplay, rainDisplay, rainTime, rainStartTime;
 var slopetext, saturationtext, FStext;
-var checkForLSInterval = 3000, queryInterval = 250;     // in ms
+var checkForLSInterval = 1000, queryInterval = 250;     // in ms
         
-var physBoxTest;
 var box2d;
 
 var shovelMode = false;
@@ -39,7 +37,7 @@ var infoPoint = 0;
 var shovelButton, dumpButton, rainButton, houseButton, treeButton, infoButton, menuButton, resetButton;
 var rainFlag = false;
 var changeFlag = false;
-var activeLS = 0, newLS = false, slideStopFlag = false;
+var activeLS = 0, newLS = false, slideStopFlag = false, maxLS = 10;
 var slideStopTime = 0;
 var active_ls_balls;
 var adding_shovel, digging_shovel, landslide_shovel, active_shovel;
@@ -47,6 +45,37 @@ var adding_shovel, digging_shovel, landslide_shovel, active_shovel;
 var esckey;
 var slide_body;
 var lkey, hkey, rkey, qkey, onekey, twokey;
+
+var modes;
+var modes_default = 
+{
+    "shovel": {
+        "on": false,
+        "excludes": true,
+        "excluded": true
+    },
+
+    "dump": {
+        "on": false,
+        "excludes": true,
+        "excluded": true
+    },
+    
+    "rain": {
+        "on": false,
+        "excludes": true,
+        "excluded": false
+    },
+    
+    "info": {
+        "on": false,
+        "excludes": true,
+        "excluded": false
+    },
+    
+};
+
+
 
 var playState = function (game) {
     
@@ -58,9 +87,10 @@ playState.prototype = {
     create: function () {
         
         var sceneParams = g.cache.getJSON('sceneParams');
-
         this.populateVariables(sceneParams);
-                
+        
+        modes = this.objClone(modes_default);
+        
         ti = g.time.create();
         tiEvent = g.time.create();
         background = g.add.image(0, 0, 'sky_dust');
@@ -74,9 +104,9 @@ playState.prototype = {
         slopetext = g.add.text(worldW/5-30, 13, "Slope gradient:",  { font: '14pt Arial', fill: '#001155' });
         saturationtext = g.add.text(worldW/5-30, 33, "Saturation:",  { font: '14pt Arial', fill: '#001155' });
         FStext = g.add.text(worldW/5-30, 53, "Factor of Safety:",  { font: '14pt Arial', fill: '#001155' });
-        this.infoToggle(infoMode);
-        
-        
+        this.infoToggle(modes.info.on);
+
+
         // Set up handlers for mouse events
         g.input.mouse.enabled = true;
         g.input.onDown.add(this.mouseDragStart, this);
@@ -162,7 +192,20 @@ playState.prototype = {
             modParams = sceneParams[scenario].modifiers[currentModifier];
             // right now these are input as array index coordinates, which should be changed to physical space coordinates in the future.
             // here we can unpack the input params, convert to indices, and pass them to the code below, which split out as a function will also serve as the core of the grading tool.
-            soil_surface = this.makeFlatSpot(soil_surface,modParams.start_pos,modParams.end_pos,modParams.level_reference,modParams.level_offset);
+            //convert start_pos to index
+            var sp = this.getAdjacentXPoints(x_axis,modParams.start_pos)[0];
+            // convert end_pos to index
+            var ep = this.getAdjacentXPoints(x_axis,modParams.end_pos)[1];
+            // convert level reference position to index
+            var lr;
+            if (modParams.level_reference == modParams.start_pos) {
+                lr = sp;
+            } else if (modParams.level_reference == modParams.end_pos) {
+                lr = ep;
+            } else {
+                lr = this.getAdjacentXPoints(x_axis,modParams.level_reference)[0];
+            }
+            soil_surface = this.makeFlatSpot(soil_surface,sp,ep,lr,modParams.level_offset);
             
         }
        
@@ -186,7 +229,7 @@ playState.prototype = {
         bot_pts = this.two1dto2d(x_axis_canvas,y_base_canvas);
         
         // assign physics bodies and properties        
-        g.physics.box2d.enable(soil_graphic); // not necessary - make surface a free body?
+        g.physics.box2d.enable(soil_graphic); 
         
         this.updateLandscapeGraphics();
         
@@ -211,14 +254,14 @@ playState.prototype = {
         nowTime = ti.ms/timeRate;  // simulation world time
         timeDisplay.setText('Day: ' + Math.round(nowTime*10)/10);
 
-        if (rainFlag) {            
+        if (modes.rain.on) {            
             rainTime = nowTime - rainStartTime;
         }
        
         /* Routine here for scooping / dumping 
             Uses something like a gaussian shape subtracted across the range of x-indices selected. These defined by a shovel_width parameter in world grid units.
         */
-        if (shovelMode) {
+        if (modes.shovel.on) {
             
             active_shovel = digging_shovel; 
             // glowing button
@@ -230,7 +273,7 @@ playState.prototype = {
             
         } // shovelmode
         
-        if (dumpMode) {
+        if (modes.dump.on) {
                 
             active_shovel = adding_shovel;    
             
@@ -241,11 +284,11 @@ playState.prototype = {
             g.canvas.style.cursor = "cell";
             g.input.onDown.addOnce(this.digActiveShovel, this);
             
-        } // shovelmode
+        } // dumpmode
  
-        if (infoMode) {
+        if (modes.info.on) {
 
-            if (!shovelMode && !dumpMode && !this.overButton()) {
+            if (!modes.shovel.on && !modes.dump.on && !this.overButton()) {
                 
                 g.canvas.style.cursor = "help";
                 
@@ -375,6 +418,29 @@ playState.prototype = {
 
         return [xa,xi];
 
+    },
+    
+    arrayThreshReplace: function (arr1,arr2,thresh) {
+        // returns a new array that is the same length as arr1 and arr2
+        // and takes the value of arr2 where elements of arr1 are greater than thresh
+        // and arr1 elsewhere
+        if (arr1.length == arr2.length){
+            
+            var xa = Array(arr1.length);
+
+            for (var i=0;i<arr1.length;i++) {
+                if ( arr1[i] > thresh) {
+                    xa[i] = arr2[i];
+                } else {
+                    xa[i] = arr1[i];
+                }
+            }
+        } else {
+            console.log('arrayThreshReplace: Arrays not of the same length')
+        }
+        
+        return xa;
+        
     },
     
     arraySnapWithin: function (arr1,arr2,thresh) {
@@ -584,6 +650,8 @@ playState.prototype = {
     
     relaxOpposingSlopes: function(arr,thresh) {
         
+        // PROBABLY NO LONGER NEEDED v 0.3.0 Aug 2019
+        
         // first determine the direction of the failure (plane is computed on whole array so in principle we could have several slides with different directions. Maybe we need to find the downhill side of each section where the thickness is > 0).
         // iterate through the array and find the LR bounds of any areas where slide_thickness is nonzero
             // these may already be determined
@@ -591,11 +659,10 @@ playState.prototype = {
             // getRegionalSlope
         // determine the maximum opposing slope within that segment
         // reduce local downhill cells (makeFlatSpot?) to eliminate the opposing slope
-        
-        
-        
+
     },
     
+
     
 /* SUPPORT FUNCTIONS */
     
@@ -663,9 +730,15 @@ playState.prototype = {
         // smooth the computed thickness with a running mean
         slide_thickness = this.arrayRunningMean(x_axis,slide_thickness,5);
         
-        var post_ls_surface = this.arrayAdd(soil_surface,slide_thickness,-1);
         // slide base should be the bedrock surface if it's close to that
-        post_ls_surface = this.arraySnapWithin(post_ls_surface,bedrock_surface,2*thick_min)
+        // snap slide_thickness to pre-slide soil thickness
+        var slide_thickness_snap = this.arraySnapWithin(slide_thickness,soil_thickness,2*thick_min)
+        // need a mask of where slide_thickness == 0
+        // avoids snapping thin soils that aren't part of the landslide
+        slide_thickness = this.arrayThreshReplace(slide_thickness,slide_thickness_snap,0)
+
+        var post_ls_surface = this.arrayAdd(soil_surface,slide_thickness,-1);
+
         // base of slide body needs to be above bedrock!
         post_ls_surface = this.arrayMax(post_ls_surface,bedrock_surface);
         
@@ -677,14 +750,14 @@ playState.prototype = {
         slide_thickness = this.arrayAdd(soil_surface,post_ls_surface,-1)
                 
         // need the x-range of the body points (nonzero elements in thresholded thickness.)
+        // actually currently using the whole domain
         var slide_area_l = 0;
-        //var slide_thick_local = slide_thickness.filter(this.checkNonZero);
         var slide_area_r = x_axis.length-1;
             
         var slide_base_padded = this.arrayScale(post_ls_surface,1,0.001);
         
         // before passing the base array to slidebodytoballs, need to isolate the part of the body that is above the bedrock surface
-        var ballsize = slide_max_thickness * -dy_canvas / 4;  // px
+        var ballsize = slide_max_thickness * -dy_canvas / 5;  // px
         
         if (ballsize > 6) {ballsize = 6}; if (ballsize < 1) {ballsize = 1};
         
@@ -697,7 +770,7 @@ playState.prototype = {
         soil_surface = post_ls_surface;        
 
         this.doSurfaceChangedUpdates();
-
+        
         activeLS += 1;
         
     },
@@ -867,6 +940,38 @@ playState.prototype = {
         
     },
     
+    objClone: function (obj) {
+        // Handle the 3 simple types, and null or undefined
+        if (null == obj || "object" != typeof obj) return obj;
+
+        // Handle Date
+        if (obj instanceof Date) {
+            var copy = new Date();
+            copy.setTime(obj.getTime());
+            return copy;
+        }
+
+        // Handle Array
+        if (obj instanceof Array) {
+            var copy = [];
+            for (var i = 0, len = obj.length; i < len; i++) {
+                copy[i] = this.objClone(obj[i]);
+            }
+            return copy;
+        }
+
+        // Handle Object
+        if (obj instanceof Object) {
+            var copy = {};
+            for (var attr in obj) {
+                if (obj.hasOwnProperty(attr)) copy[attr] = this.objClone(obj[attr]);
+            }
+            return copy;
+        }
+
+        throw new Error("Unable to copy obj! Its type isn't supported.");
+    },
+    
     depositThickness: function(xarr,yarr,points,wdw) {
         
         var hx = this.zeros(xarr.length);
@@ -883,15 +988,15 @@ playState.prototype = {
 
                 if (points[j].x/dx_canvas >= xi-0.5*wdw && points[j].x/dx_canvas <= xi+0.5*wdw) {
                     npt++;
-                    if (points[j].body.y < dpMax) {
-                        dpMax = points[j].body.y;  // here in canvas units
+                    if (points[j].body.y - points[j].height/2 < dpMax) {
+                        dpMax = points[j].body.y - points[j].height/2;  // here in canvas units
                     }
                 }
 
             } // for j
 
             if (npt > 0) {
-                hx[i] = -(worldH-dpMax)/dy_canvas-yarr[i]-.4;   // convert to physical units for return
+                hx[i] = -(worldH-dpMax)/dy_canvas-yarr[i];   // convert to physical units for return
             }
         }     // for i
     
@@ -915,30 +1020,63 @@ playState.prototype = {
     
 /* CALLBACKS and INPUT EVENTS */    
     
+    setmode: function (modename,value) {
+    // takes string modename and value to assign
+    // value should be logical T or F
+        if (value === true || value === 1) {
+            // turn mode "modename" on and other excluded modes off
+            if (modes[modename].excludes) {
+                this.resetmodes(1);
+            }
+            modes[modename].on = true;
+        } else if (value === false || value === 0) {
+            // turn mode "modename" off
+            modes[modename].on = false;
+        } else {
+            console.log("setmode: input value must be logical true or false, or 1 or 0.");
+        };
+        
+    },
+    
+    resetmodes: function (toggle) {
+        if (toggle == 0) {
+            // reapplies default values to all modes
+            modes = this.objClone(modes_default); 
+        } else {
+            // reset all "excluded" fields but leave others alone
+            for (var attr in modes) {
+                if (modes[attr].excluded && modes[attr].on) {
+                    
+                    if (attr === "shovel") {this.toggleShovelMode()};
+                    if (attr === "dump") {this.toggleDumpMode()};
+                    console.log(attr)
+                    // need to run toggle on any that are true rather than just assigning false
+                }
+            }
+        }
+    },
+    
+    
     toggleShovelMode: function () {
         
-        if (shovelMode == true) {
-            shovelMode = false;
+        if (modes.shovel.on == true) {
+            this.setmode("shovel",false);
             shovelButton.alpha = 0.8
             shovelButton.setFrames(1, 3, 2, 3);
             g.canvas.style.cursor = "default"
             // destroy shovel listeners
             esckey.onDown.remove(this.toggleShovelMode, this);
             g.input.onDown.remove(this.digActiveShovel, this);            
-        } else {
-            // one mode at a time. this approach will become unwieldy with more than a few buttons
-            if (dumpMode) {
-                this.toggleDumpMode();
-            }            
-            shovelMode = true;
+        } else {        
+            this.setmode("shovel",true);
             esckey.onDown.addOnce(this.toggleShovelMode, this);
         }
     },
     
     toggleDumpMode: function () {
 
-        if (dumpMode == true) {
-            dumpMode = false;
+        if (modes.dump.on == true) {
+            this.setmode("dump",false);
             dumpButton.alpha = 0.8;
             dumpButton.setFrames(1, 3, 2, 3);
             g.canvas.style.cursor = "default"
@@ -946,23 +1084,19 @@ playState.prototype = {
             esckey.onDown.remove(this.toggleDumpMode, this);
             g.input.onDown.remove(this.digActiveShovel, this);
         } else {            
-            // one mode at a time. this approach will become unwieldy with more than a few buttons
-            if (shovelMode) {
-                this.toggleShovelMode();
-            }
-            dumpMode = true;
+            this.setmode("dump",true);
             esckey.onDown.addOnce(this.toggleDumpMode, this);
         }
     },
     
     toggleRain: function () {
         
-        if (rainFlag == false) {        
+        if (modes.rain.on == false) {        
             
             rain_emitter.on = true;
             background.tint = 0x999999;
             rainStartTime = nowTime;            
-            rainFlag = true;  
+            this.setmode("rain",true);
             
         } else { 
             
@@ -970,7 +1104,7 @@ playState.prototype = {
             background.tint = 0xFFFFFF;
 
             rainTime = 0;            
-            rainFlag = false;            
+            this.setmode("rain",false);            
         }
         
         
@@ -979,7 +1113,7 @@ playState.prototype = {
     landslideListener: function() {
         
         var failing = dots.filter( function(d) {return d.FS < 1} );
-        if (failing.length > 0.01 * dots.length && activeLS <= 5) { this.doLandslide() };
+        if (failing.length > 0.01 * dots.length && activeLS <= maxLS) { this.doLandslide() };
         //console.log(failing.length)
         
     },
@@ -998,8 +1132,8 @@ playState.prototype = {
     },
 
     houseButtonClick: function() {
-        shovelMode = true; 
-        dumpMode = true; 
+        modes.shovel.on = true; 
+        modes.dump.on = true; 
         this.toggleShovelMode(); 
         this.toggleDumpMode(); 
         this.newHouse(worldW/2,10)
@@ -1015,7 +1149,7 @@ playState.prototype = {
     
     inspectPoints: function() {
         // shows info about nearest analysis point
-        if (infoMode) {
+        if (modes.info.on) {
             this.infoToggle(false)
         } else {
             this.infoToggle(true)
@@ -1189,7 +1323,7 @@ playState.prototype = {
             
 
           } // for i = points
-        if (infoMode) {
+        if (modes.info.on) {
           if (points[infoPoint]) {
               points[infoPoint].scale = 6;
               points[infoPoint].color = 0xFFFF00;         
@@ -1311,9 +1445,9 @@ playState.prototype = {
     
     saturationCalc: function(point) {
         // function updates both the saturation and satDepth fields of the point object.
-        if (rainFlag) {
+        if (modes.rain.on) {
             // calculate the depth of the wetting front, which increases proportionally to the sqrt(time) during rain. this is set up to be spatially variable but for now it isn't
-            point.satDepth += ksat * Math.sqrt(rainTime);
+            point.satDepth = ksat * Math.sqrt(rainTime);
             if (point.satDepth >= point.depth) {
                 point.saturation += 1 * (queryInterval/timeRate); 
             }
@@ -1377,12 +1511,12 @@ playState.prototype = {
             slopetext.visible = true;
             saturationtext.visible = true;
             FStext.visible = true;
-            infoMode = true;
+            this.setmode("info",true);
         } else {
             slopetext.visible = false;
             saturationtext.visible = false;
             FStext.visible = false;
-            infoMode = false;
+            this.setmode("info",false);
         }
     
     },
@@ -1420,6 +1554,7 @@ playState.prototype = {
         defaultCohesion = sceneParams[scenario].soil.default_cohesion;
         defaultSaturation = sceneParams[scenario].soil.default_saturation;
         defaultPhi = sceneParams[scenario].soil.default_phi;
+        ptDensity = sceneParams[scenario].soil.point_density;
     },
     
     makeToolButtons: function(toolOptions) {
@@ -1526,7 +1661,7 @@ playState.prototype = {
             var sx = elementPlacements.streams[i]*dx_canvas;
             var sy = this.interp1(x_axis_canvas,soil_surface_canvas,hx);
 
-            // stream = this.newStream(sx, sy); // code to genmerate a stream
+            // stream = this.newStream(sx, sy); // code to generate a stream
         }
 }
     
