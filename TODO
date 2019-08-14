@@ -1,26 +1,33 @@
 TODO:
 
-Priorities, Oct 2019 update:
+Priorities, Fall 2019 update:
     
+    PRIORITY 1
     - Trees
-    - Standardize toolbar grid and place along edge not in scene
+    - Improve info mode: if selected point is eroded, display "eroded" instead of switching points; handle shoveling better too.
+    
+    MINOR
+    - Clouds (marks passage of time)
     - Cursor appearance overlays for tools
     - Info icon active/over states
-    - Tool sprite improvements
-    - Add HST logo on spash screen
+    - Add HST logo on splash screen
+    - Update phaser game-object version number to match splash screen
+    - Adjust "density" of overriding deposits - scale mobile height thickness by 50-60% for calculation of overridden FS points
+
 
 
 Code style work:
 
 1. Deglobalize as much as possible
-3. Incompatible with all versions of IE due to lack of ES6 support. Array.fill() is one culprit; refactor if changes are few and don't impact performance, otherwise use Babel transpiler.
-4. Performance optimization
+2. Incompatible with all versions of IE due to lack of ES6 support. Array.fill() is one culprit; refactor if changes are few and don't impact performance, otherwise use Babel transpiler.
+3. Performance optimization
 
 
 Implement:
 
 1. Grading shovel that smooths an area
 2. Standardize toolbar grid and place along edge not in scene
+3. Clouds (marks passage of time)
 4. Trees and other local point modifiers (proximity modifier object class, usable for drains, trees, roads, etc.)
     - proximity method returns all analysis points within a radius
     - scale effect by distance
@@ -45,7 +52,7 @@ Implement:
 
 
 Fix:
-1. Dog slow on SOME Windows machines and Mac Firefox. v0.3.0b seems to have slowed performance in firefox (major)
+1. Dog slow on SOME Windows machines.
 3. Shoveling with info shower active switches the active dot - related to dot IDs changing on redraw (moderate)
 4. New points added above a saturating soil (during rain) are not correctly saturating. Existing points behave correctly considering their greater depth (minor)
 5. Slider thickness ignores positive-definite soil thickness when reducing below bedrock (not currently using slider)
@@ -59,7 +66,8 @@ Sprite work:
 1. Improve general appearance of things.
 2. Cursor appearance overlays for tools.
 3. Info icon active/over states.
-4. Improve landslide chunks
+4. Tool sprite improvements
+5. Improve landslide chunks
     - color by depth, along with soil?
 
 
@@ -79,6 +87,7 @@ Major updates:
 
 
 DONE:
+√ v0.3.0b seems to have slowed performance in firefox (major) - seems resolved in final 030 RC
 √ Mode mutual exclusivity / rain button switches out of all modes
 √ Sometimes, points do not saturate if rain starts shortly after load (moderate)
 √ Implement flat spot and other modifiers in world units
